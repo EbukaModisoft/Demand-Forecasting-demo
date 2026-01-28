@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, Tag, ShoppingBag, CloudRain, Calendar, Activity, TrendingUp, Info } from 'lucide-react';
+import { DollarSign, Tag, ShoppingBag, CloudRain, Calendar, Activity, Info } from 'lucide-react';
 import { KpiData } from '../types';
 
 interface KpiCardsRowProps {
@@ -48,7 +48,7 @@ export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({ data, loading }) => {
       <KpiCard 
         title="Revenue (Est)" 
         value={formatMoney(data.revenueForecast)} 
-        subValue="+12%"
+        subValue={`+${data.todayVsTypical}% vs typical`}
         icon={DollarSign} 
         colorClass="text-emerald-600 bg-emerald-500" 
         tooltip="Predicted revenue for the selected timeframe based on historical trends."
@@ -57,7 +57,7 @@ export const KpiCardsRow: React.FC<KpiCardsRowProps> = ({ data, loading }) => {
       <KpiCard 
         title="Promo Lift" 
         value={`+${data.promoBoost.toFixed(1)}%`}
-        subValue="High"
+        subValue="vs baseline"
         icon={Tag} 
         colorClass="text-blue-600 bg-blue-500"
         tooltip="Revenue uplift specifically attributed to active promotions."
