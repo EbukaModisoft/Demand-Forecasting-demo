@@ -37,6 +37,8 @@ import {
   Area,
   BarChart,
   Bar,
+  ComposedChart,
+  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -48,6 +50,7 @@ import {
 import { ScenarioInputs, DEFAULT_SCENARIO_INPUTS, ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS } from '../types';
 import { buildActions, calculateScenarioMultiplier, calculateConfidence, updateActionStatus, getActionStats } from '../lib/actionEngine';
 import { ScenarioCompareDrawer } from '../components/ScenarioCompareDrawer';
+import { NewItemSimulator } from '../components/NewItemSimulator';
 
 // ============== TYPES ==============
 type BusinessType = 'convenience' | 'grocery' | 'liquor' | 'restaurant';
@@ -578,6 +581,7 @@ export default function DemandForecastingPage() {
   const [isSunnyOpen, setIsSunnyOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isScenarioOpen, setIsScenarioOpen] = useState(false);
+  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
   const [items, setItems] = useState(BUSINESS_TOP_ITEMS[businessType]);
   
   // Filter state
@@ -726,6 +730,9 @@ export default function DemandForecastingPage() {
       actual: point.actualRevenue != null ? Math.round(point.actualRevenue * filterMultiplier) : null, // Actuals don't get scenario
       forecastUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * combinedMultiplier),
       actualUnits: point.actualUnits != null ? Math.round(point.actualUnits * filterMultiplier) : null,
+      // Baseline = original forecast WITHOUT scenario adjustments (for comparison)
+      baselineRevenue: point.actualRevenue != null ? null : Math.round(point.forecastRevenue * filterMultiplier),
+      baselineUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * filterMultiplier),
     }));
   }, [filteredForecastData, filterMultiplier, combinedMultiplier]);
 
@@ -1724,7 +1731,11 @@ export default function DemandForecastingPage() {
               <div className="flex items-center gap-4 mb-4 text-xs">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-teal-500"></div>
-                  <span className="text-gray-600">Forecast</span>
+                  <span className="text-gray-600">Scenario Forecast</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded-full bg-gray-300 border border-dashed border-gray-400"></div>
+                  <span className="text-gray-500 italic">Baseline</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded-full bg-amber-400"></div>
@@ -1759,10 +1770,22 @@ export default function DemandForecastingPage() {
                       tickFormatter={(value) => value.toString()}
                     />
                     <Tooltip content={<CustomTooltip />} />
+                    {/* Baseline (ghost line - original forecast without scenario) */}
+                    <Area
+                      type="monotone"
+                      dataKey="baselineRevenue"
+                      name="Baseline"
+                      stroke="#94A3B8"
+                      strokeWidth={1.5}
+                      strokeDasharray="4 4"
+                      fill="transparent"
+                      connectNulls={false}
+                      dot={false}
+                    />
                     <Area
                       type="monotone"
                       dataKey="forecast"
-                      name="Forecast"
+                      name="Scenario Forecast"
                       stroke="#14B8A6"
                       strokeWidth={2}
                       fill="url(#forecastGradient)"
@@ -1808,7 +1831,11 @@ export default function DemandForecastingPage() {
               <div className="flex items-center gap-4 mb-4 text-xs">
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded bg-teal-500"></div>
-                  <span className="text-gray-600">Forecast</span>
+                  <span className="text-gray-600">Scenario Forecast</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-gray-300 border border-dashed border-gray-400"></div>
+                  <span className="text-gray-500 italic">Baseline</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-3 h-3 rounded bg-amber-400"></div>
@@ -1818,7 +1845,7 @@ export default function DemandForecastingPage() {
 
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis 
                       dataKey="date" 
@@ -1832,9 +1859,10 @@ export default function DemandForecastingPage() {
                       tick={{ fontSize: 11, fill: '#94A3B8' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="forecastUnits" name="Forecast Units" fill="#14B8A6" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="forecastUnits" name="Scenario Forecast" fill="#14B8A6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="actualUnits" name="Actual Units" fill="#FBBF24" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Line type="monotone" dataKey="baselineUnits" name="Baseline" stroke="#94A3B8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
             </div>
@@ -2374,6 +2402,13 @@ export default function DemandForecastingPage() {
                     </span>
                   )}
                   <button 
+                    onClick={() => setIsNewItemOpen(true)}
+                    className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                    Test New Item
+                  </button>
+                  <button 
                     onClick={() => setIsScenarioOpen(true)}
                     className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   >
@@ -2662,6 +2697,15 @@ export default function DemandForecastingPage() {
         onApply={setScenarioInputs}
         baselineRevenue={Math.round(filteredForecastData.reduce((sum, p) => sum + (p.actualRevenue ?? p.forecastRevenue), 0) * filterMultiplier)}
         baselineUnits={Math.round(filteredForecastData.reduce((sum, p) => sum + (p.actualUnits ?? p.forecastUnits), 0) * filterMultiplier)}
+      />
+
+      {/* ===== NEW ITEM SIMULATOR ===== */}
+      <NewItemSimulator
+        isOpen={isNewItemOpen}
+        onClose={() => setIsNewItemOpen(false)}
+        businessType={businessType}
+        baselineRevenue={Math.round(kpiData.revenueForecast / (forecastWindow || 14))}
+        baselineUnits={Math.round(kpiData.unitsForecast / (forecastWindow || 14))}
       />
     </div>
   );

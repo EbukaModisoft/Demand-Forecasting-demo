@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Calculator, RotateCcw, TrendingUp, Cloud, Calendar, Sliders } from 'lucide-react';
+import { X, Save, Calculator, RotateCcw, TrendingUp, Cloud, Calendar, Sliders, DollarSign, Sparkles } from 'lucide-react';
 import { ScenarioInputs, DEFAULT_SCENARIO_INPUTS } from '../types';
 
 interface ScenarioCompareDrawerProps {
@@ -58,6 +58,24 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     color: 'emerald',
     description: 'Your own judgment—override the forecast up or down',
   },
+  {
+    key: 'priceImpactPct',
+    label: 'Price Change',
+    icon: <DollarSign className="w-4 h-4" />,
+    min: -30,
+    max: 30,
+    color: 'rose',
+    description: 'Price increase (negative lift) or decrease (positive lift)',
+  },
+  {
+    key: 'newItemImpactPct',
+    label: 'New Item Launch',
+    icon: <Sparkles className="w-4 h-4" />,
+    min: -10,
+    max: 50,
+    color: 'violet',
+    description: 'Expected lift from introducing new menu or product',
+  },
 ];
 
 export const ScenarioCompareDrawer: React.FC<ScenarioCompareDrawerProps> = ({ 
@@ -93,8 +111,14 @@ export const ScenarioCompareDrawer: React.FC<ScenarioCompareDrawerProps> = ({
   };
 
   // Calculate combined effect
-  const combinedPct = inputs.promoLiftPct + inputs.weatherImpactPct + inputs.eventLiftPct + inputs.manualOverridePct;
-  const cappedPct = Math.max(-50, Math.min(100, combinedPct));
+  const combinedPct = 
+    inputs.promoLiftPct + 
+    inputs.weatherImpactPct + 
+    inputs.eventLiftPct + 
+    inputs.manualOverridePct + 
+    inputs.priceImpactPct + 
+    inputs.newItemImpactPct;
+  const cappedPct = Math.max(-50, Math.min(120, combinedPct));
   const multiplier = 1 + (cappedPct / 100);
 
   const newRevenue = Math.round(baselineRevenue * multiplier);

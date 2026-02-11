@@ -27,6 +27,8 @@ export interface TimeSeriesPoint {
   isFuture: boolean;
   actual?: number | null;
   forecast?: number | null;
+  baselineRevenue?: number | null;
+  baselineUnits?: number | null;
   annotation?: string; // For "Explain changes"
 }
 
@@ -60,6 +62,8 @@ export interface ScenarioInputs {
   weatherImpactPct: number;  // -30 to +30
   eventLiftPct: number;      // -20 to +50
   manualOverridePct: number; // -50 to +50
+  priceImpactPct: number;    // -30 to +30 (price increase = negative demand, decrease = positive)
+  newItemImpactPct: number;  // -10 to +50 (new menu/product launch lift)
 }
 
 export const DEFAULT_SCENARIO_INPUTS: ScenarioInputs = {
@@ -67,6 +71,8 @@ export const DEFAULT_SCENARIO_INPUTS: ScenarioInputs = {
   weatherImpactPct: 0,
   eventLiftPct: 0,
   manualOverridePct: 0,
+  priceImpactPct: 0,
+  newItemImpactPct: 0,
 };
 
 // ============== ACTION SYSTEM ==============
@@ -174,4 +180,38 @@ export const FUEL_GRADE_COLORS: Record<FuelGrade, string> = {
   plus: '#3b82f6', // blue
   premium: '#8b5cf6', // purple
   diesel: '#f59e0b', // amber
+};
+
+// ============== NEW ITEM SIMULATOR ==============
+export interface NewItemInput {
+  name: string;
+  price: number;
+  category: Department | 'Prepared Foods' | 'Hot Beverages' | 'Alcohol' | 'Spirits' | 'Beer/Wine';
+  storeId: string;
+  isPromo: boolean;
+  promoDiscountPct: number;
+}
+
+export interface NewItemProjection {
+  dailyUnits: number;
+  dailyRevenue: number;
+  weeklyUnits: number;
+  weeklyRevenue: number;
+  monthlyUnits: number;
+  monthlyRevenue: number;
+  cannibalizationPct: number;
+  netNewRevenue: number;
+  breakEvenDays: number;
+  confidenceScore: number;
+  demandCurve: { day: number; units: number; revenue: number }[];
+  insights: string[];
+}
+
+export const DEFAULT_NEW_ITEM_INPUT: NewItemInput = {
+  name: '',
+  price: 0,
+  category: 'Snacks',
+  storeId: 'all',
+  isPromo: false,
+  promoDiscountPct: 0,
 };

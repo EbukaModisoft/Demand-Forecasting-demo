@@ -423,11 +423,25 @@ export function buildActions(input: ActionEngineInput): ActionItem[] {
 
 // ============== SCENARIO MULTIPLIER ==============
 export function calculateScenarioMultiplier(inputs: ScenarioInputs): number {
-  const { promoLiftPct, weatherImpactPct, eventLiftPct, manualOverridePct } = inputs;
+  const { 
+    promoLiftPct, 
+    weatherImpactPct, 
+    eventLiftPct, 
+    manualOverridePct,
+    priceImpactPct,
+    newItemImpactPct 
+  } = inputs;
   
-  // Combine effects (not strictly additive—diminishing returns)
-  const combinedPct = promoLiftPct + weatherImpactPct + eventLiftPct + manualOverridePct;
-  const cappedPct = Math.max(-50, Math.min(100, combinedPct)); // Cap at -50% to +100%
+  // Combine effects
+  const combinedPct = 
+    promoLiftPct + 
+    weatherImpactPct + 
+    eventLiftPct + 
+    manualOverridePct + 
+    priceImpactPct + 
+    newItemImpactPct;
+    
+  const cappedPct = Math.max(-50, Math.min(120, combinedPct)); // Cap at -50% to +120% for new item excitement
   
   return 1 + (cappedPct / 100);
 }
