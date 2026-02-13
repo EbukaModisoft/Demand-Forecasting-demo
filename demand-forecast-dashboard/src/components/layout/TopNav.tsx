@@ -36,7 +36,7 @@ export const TopNav = () => {
         <button className="text-sm font-medium text-gray-500 hover:text-gray-900 px-2 py-1 transition-colors">What's New</button>
         
         {/* Clock In Pill */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded-full text-xs font-semibold hover:bg-emerald-100 transition-colors shadow-sm">
+        <button className="flex items-center gap-1.5 px-3 py-1.5 bg-modisoft-green/10 text-modisoft-green border border-modisoft-green/20 rounded-full text-xs font-semibold hover:bg-modisoft-green/20 transition-colors shadow-sm">
           <Clock className="w-3.5 h-3.5" />
           <span>Clock In</span>
         </button>

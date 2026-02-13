@@ -18,16 +18,16 @@ export const SunnySidePanel: React.FC<SunnySidePanelProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-y-0 left-0 w-[400px] bg-white shadow-2xl z-50 animate-in slide-in-from-left duration-300 flex flex-col border-r border-amber-100/50">
+    <div className="fixed inset-y-0 left-0 w-[400px] bg-white shadow-2xl z-50 animate-in slide-in-from-left duration-300 flex flex-col border-r border-modisoft-yellow/20">
         {/* Header */}
-        <div className="p-5 border-b border-amber-100/50 flex items-center justify-between bg-gradient-to-r from-amber-50/80 to-orange-50/80 backdrop-blur-sm">
+        <div className="p-5 border-b border-modisoft-yellow/20 flex items-center justify-between bg-gradient-to-r from-modisoft-yellow/10 to-modisoft-yellow/5 backdrop-blur-sm">
             <div className="flex items-center space-x-3">
-                <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl shadow-lg shadow-amber-200">
-                    <Sparkles className="w-5 h-5 text-white" />
+                <div className="p-2 bg-modisoft-yellow rounded-xl shadow-lg shadow-modisoft-yellow/40">
+                    <Sparkles className="w-5 h-5 text-modisoft-blue" />
                 </div>
                 <div>
                     <h3 className="font-bold text-gray-900 text-base">Sunny AI</h3>
-                    <p className="text-xs text-amber-600 font-bold tracking-wide uppercase">Demand Assistant</p>
+                    <p className="text-xs text-modisoft-blue font-bold tracking-wide uppercase">Demand Assistant</p>
                 </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-white/60 rounded-full transition-colors group">
@@ -39,9 +39,9 @@ export const SunnySidePanel: React.FC<SunnySidePanelProps> = ({ isOpen, onClose 
         <div className="flex-1 p-5 overflow-y-auto space-y-6 bg-slate-50/50">
             {/* Bot Message */}
             <div className="flex flex-col space-y-1.5 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                <div className="self-start bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-amber-100 text-gray-700 text-sm leading-relaxed max-w-[90%]">
-                    <div className="flex items-center gap-2 mb-2 text-xs font-bold text-amber-600 uppercase tracking-wider">
-                         <Sparkles className="w-3 h-3" />
+                <div className="self-start bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-modisoft-yellow/20 text-gray-700 text-sm leading-relaxed max-w-[90%]">
+                    <div className="flex items-center gap-2 mb-2 text-xs font-bold text-modisoft-blue uppercase tracking-wider">
+                         <Sparkles className="w-3 h-3 text-modisoft-yellow" />
                          <span>Insight</span>
                     </div>
                     <p>Hi! I noticed a <span className="font-bold text-orange-600">heat wave</span> incoming this weekend (90°F+). Should I mimic the sales pattern from July 2024?</p>

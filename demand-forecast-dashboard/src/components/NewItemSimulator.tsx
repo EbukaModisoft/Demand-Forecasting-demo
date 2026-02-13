@@ -239,10 +239,10 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
       {/* Drawer */}
       <div className="fixed right-0 top-0 h-full w-[520px] bg-white shadow-2xl z-50 flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-purple-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-modisoft-blue/10 to-modisoft-turquoise/10">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-100 rounded-lg">
-              <Sparkles className="w-5 h-5 text-violet-600" />
+            <div className="p-2 bg-modisoft-turquoise/20 rounded-lg">
+              <Sparkles className="w-5 h-5 text-modisoft-blue" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-gray-900">New Item Simulator</h2>
@@ -262,7 +262,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
           {/* Input Form */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <Package className="w-4 h-4 text-violet-500" />
+              <Package className="w-4 h-4 text-modisoft-blue" />
               Item Details
             </h3>
             
@@ -274,7 +274,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                 value={input.name}
                 onChange={(e) => setInput(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g., Spicy Chicken Sandwich"
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise/20 focus:border-modisoft-turquoise transition-all"
               />
             </div>
             
@@ -294,7 +294,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                     placeholder="0.00"
                     step="0.01"
                     min="0"
-                    className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400"
+                    className="w-full pl-7 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise/20 focus:border-modisoft-turquoise transition-all"
                   />
                 </div>
               </div>
@@ -307,7 +307,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                 <select
                   value={input.category}
                   onChange={(e) => setInput(prev => ({ ...prev, category: e.target.value as typeof prev.category }))}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise/20 focus:border-modisoft-turquoise bg-white transition-all"
                 >
                   {categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -325,7 +325,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
               <select
                 value={input.storeId}
                 onChange={(e) => setInput(prev => ({ ...prev, storeId: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-400 bg-white"
+                className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise/20 focus:border-modisoft-turquoise bg-white transition-all"
               >
                 {Object.entries(STORE_TRAFFIC).map(([id, data]) => (
                   <option key={id} value={id}>{data.label}</option>
@@ -340,7 +340,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                   type="checkbox"
                   checked={input.isPromo}
                   onChange={(e) => setInput(prev => ({ ...prev, isPromo: e.target.checked }))}
-                  className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                  className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
                 />
                 <span className="text-sm font-medium text-gray-700">Launch with promotional pricing</span>
               </label>
@@ -354,11 +354,11 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                     max="50"
                     value={input.promoDiscountPct}
                     onChange={(e) => setInput(prev => ({ ...prev, promoDiscountPct: parseInt(e.target.value) }))}
-                    className="w-full accent-violet-600"
+                    className="w-full accent-modisoft-turquoise"
                   />
                   <div className="flex justify-between text-xs text-gray-500 mt-1">
                     <span>5% off</span>
-                    <span className="font-medium text-violet-600">{input.promoDiscountPct}% off</span>
+                    <span className="font-medium text-modisoft-turquoise">{input.promoDiscountPct}% off</span>
                     <span>50% off</span>
                   </div>
                 </div>
@@ -370,56 +370,56 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
           {projection && (
             <div className="space-y-4">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <TrendingUp className="w-4 h-4 text-modisoft-green" />
                 Projected Performance
               </h3>
               
               {/* Key Metrics */}
               <div className="grid grid-cols-3 gap-3">
-                <div className="p-3 bg-emerald-50 rounded-xl text-center">
-                  <p className="text-xs text-emerald-600 font-medium">Daily Revenue</p>
-                  <p className="text-xl font-bold text-emerald-700">${projection.dailyRevenue}</p>
-                  <p className="text-xs text-emerald-500">{projection.dailyUnits} units</p>
+                <div className="p-3 bg-modisoft-green/10 rounded-xl text-center">
+                  <p className="text-xs text-modisoft-green font-bold">Daily Revenue</p>
+                  <p className="text-xl font-bold text-modisoft-green">${projection.dailyRevenue}</p>
+                  <p className="text-xs text-modisoft-green/80">{projection.dailyUnits} units</p>
                 </div>
-                <div className="p-3 bg-blue-50 rounded-xl text-center">
-                  <p className="text-xs text-blue-600 font-medium">Weekly</p>
-                  <p className="text-xl font-bold text-blue-700">${projection.weeklyRevenue.toLocaleString()}</p>
-                  <p className="text-xs text-blue-500">{projection.weeklyUnits} units</p>
+                <div className="p-3 bg-modisoft-blue/10 rounded-xl text-center">
+                  <p className="text-xs text-modisoft-blue font-bold">Weekly</p>
+                  <p className="text-xl font-bold text-modisoft-blue">${projection.weeklyRevenue.toLocaleString()}</p>
+                  <p className="text-xs text-modisoft-blue/80">{projection.weeklyUnits} units</p>
                 </div>
-                <div className="p-3 bg-purple-50 rounded-xl text-center">
-                  <p className="text-xs text-purple-600 font-medium">Monthly</p>
-                  <p className="text-xl font-bold text-purple-700">${projection.monthlyRevenue.toLocaleString()}</p>
-                  <p className="text-xs text-purple-500">{projection.monthlyUnits} units</p>
+                <div className="p-3 bg-modisoft-turquoise/10 rounded-xl text-center">
+                  <p className="text-xs text-modisoft-turquoise font-bold">Monthly</p>
+                  <p className="text-xl font-bold text-modisoft-turquoise">${projection.monthlyRevenue.toLocaleString()}</p>
+                  <p className="text-xs text-modisoft-turquoise/80">{projection.monthlyUnits} units</p>
                 </div>
               </div>
               
               {/* Impact Metrics */}
               <div className="grid grid-cols-2 gap-3">
-                <div className={`p-3 rounded-xl ${parseFloat(impactOnTotal) > 0 ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+                <div className={`p-3 rounded-xl ${parseFloat(impactOnTotal) > 0 ? 'bg-modisoft-green/10' : 'bg-gray-50'}`}>
                   <div className="flex items-center gap-2">
                     {parseFloat(impactOnTotal) > 0 ? (
-                      <TrendingUp className="w-4 h-4 text-emerald-500" />
+                      <TrendingUp className="w-4 h-4 text-modisoft-green" />
                     ) : (
                       <TrendingDown className="w-4 h-4 text-gray-400" />
                     )}
                     <p className="text-xs text-gray-600 font-medium">Impact on Daily Total</p>
                   </div>
-                  <p className={`text-lg font-bold ${parseFloat(impactOnTotal) > 0 ? 'text-emerald-700' : 'text-gray-600'}`}>
+                  <p className={`text-lg font-bold ${parseFloat(impactOnTotal) > 0 ? 'text-modisoft-green' : 'text-gray-600'}`}>
                     +{impactOnTotal}%
                   </p>
                   <p className="text-xs text-gray-500">Net new: ${projection.netNewRevenue}/day</p>
                 </div>
                 
-                <div className={`p-3 rounded-xl ${projection.cannibalizationPct > 20 ? 'bg-amber-50' : 'bg-gray-50'}`}>
+                <div className={`p-3 rounded-xl ${projection.cannibalizationPct > 20 ? 'bg-modisoft-yellow/10' : 'bg-gray-50'}`}>
                   <div className="flex items-center gap-2">
                     {projection.cannibalizationPct > 20 ? (
-                      <AlertTriangle className="w-4 h-4 text-amber-500" />
+                      <AlertTriangle className="w-4 h-4 text-modisoft-yellow" />
                     ) : (
-                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <CheckCircle className="w-4 h-4 text-modisoft-green" />
                     )}
                     <p className="text-xs text-gray-600 font-medium">Cannibalization Risk</p>
                   </div>
-                  <p className={`text-lg font-bold ${projection.cannibalizationPct > 20 ? 'text-amber-700' : 'text-gray-700'}`}>
+                  <p className={`text-lg font-bold ${projection.cannibalizationPct > 20 ? 'text-modisoft-blue' : 'text-gray-700'}`}>
                     {projection.cannibalizationPct}%
                   </p>
                   <p className="text-xs text-gray-500">
@@ -447,7 +447,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full ${projection.confidenceScore >= 80 ? 'bg-emerald-500' : projection.confidenceScore >= 60 ? 'bg-amber-500' : 'bg-red-500'}`}
+                        className={`h-full rounded-full ${projection.confidenceScore >= 80 ? 'bg-modisoft-green' : projection.confidenceScore >= 60 ? 'bg-modisoft-yellow' : 'bg-red-500'}`}
                         style={{ width: `${projection.confidenceScore}%` }}
                       />
                     </div>
@@ -464,8 +464,8 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
                     <AreaChart data={projection.demandCurve} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                       <defs>
                         <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#8B5CF6" stopOpacity={0.2}/>
-                          <stop offset="95%" stopColor="#8B5CF6" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#4DC1B4" stopOpacity={0.2}/>
+                          <stop offset="95%" stopColor="#4DC1B4" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -534,8 +534,8 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
           {/* Empty State */}
           {!projection && (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mb-4">
-                <ShoppingCart className="w-8 h-8 text-violet-400" />
+              <div className="w-16 h-16 bg-modisoft-turquoise/10 rounded-full flex items-center justify-center mb-4">
+                <ShoppingCart className="w-8 h-8 text-modisoft-turquoise" />
               </div>
               <h3 className="text-gray-900 font-medium mb-1">Enter item details</h3>
               <p className="text-sm text-gray-500">
@@ -553,7 +553,7 @@ export const NewItemSimulator: React.FC<NewItemSimulatorProps> = ({
             </p>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors"
+              className="px-4 py-2 bg-modisoft-blue text-white text-sm font-medium rounded-lg hover:bg-modisoft-blue-light transition-colors"
             >
               Done
             </button>

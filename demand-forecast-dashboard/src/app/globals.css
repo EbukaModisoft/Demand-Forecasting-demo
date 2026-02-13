@@ -2,27 +2,35 @@
 
 :root {
   --background: #F8FAFC;
-  --foreground: #1E293B;
+  --foreground: #0B1932; /* Modisoft Deep Blue for text */
   
-  /* Brand Colors - Figma Design System */
-  --navy-primary: #1E3A5F;
-  --navy-dark: #152C4A;
-  --teal-primary: #14B8A6;
-  --teal-light: #5EEAD4;
-  --teal-dark: #0D9488;
-  --amber-primary: #F59E0B;
-  --amber-light: #FCD34D;
+  /* Brand Colors - Modisoft Brand Guidelines */
+  --modisoft-blue: #0B1932; /* PMS 296 C */
+  --modisoft-blue-light: #152C4A; /* Tint */
+  --modisoft-teal: #2E595A; /* PMS 5477 C */
+  --modisoft-turquoise: #4DC1B4; /* PMS 3258 C */
+  --modisoft-green: #A4CF5C; /* PMS 367 C */
+  --modisoft-yellow: #F8BC2E; /* PMS 123 C */
   
-  /* Chart Colors */
-  --chart-teal: #14B8A6;
-  --chart-yellow: #FBBF24;
+  /* Chart Colors Matching Brand */
+  --chart-primary: #0B1932;
+  --chart-secondary: #2E595A;
+  --chart-accent: #4DC1B4;
+  --chart-warning: #F8BC2E;
+  --chart-success: #A4CF5C;
 }
 
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  
+  /* Expose Modisoft colors to Tailwind */
+  --color-modisoft-blue: var(--modisoft-blue);
+  --color-modisoft-blue-light: var(--modisoft-blue-light);
+  --color-modisoft-teal: var(--modisoft-teal);
+  --color-modisoft-turquoise: var(--modisoft-turquoise);
+  --color-modisoft-green: var(--modisoft-green);
+  --color-modisoft-yellow: var(--modisoft-yellow);
 }
 
 /* Disable dark mode - always light */

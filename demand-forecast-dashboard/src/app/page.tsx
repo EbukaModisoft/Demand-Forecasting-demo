@@ -47,10 +47,12 @@ import {
   ReferenceLine,
   Cell
 } from 'recharts';
-import { ScenarioInputs, DEFAULT_SCENARIO_INPUTS, ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS } from '../types';
+import { ScenarioInputs, DEFAULT_SCENARIO_INPUTS, ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS, ApprovedPlan, PacingDay, WeeklyReviewSummary } from '../types';
 import { buildActions, calculateScenarioMultiplier, calculateConfidence, updateActionStatus, getActionStats } from '../lib/actionEngine';
 import { ScenarioCompareDrawer } from '../components/ScenarioCompareDrawer';
 import { NewItemSimulator } from '../components/NewItemSimulator';
+import { ExecutionBoard } from '../components/ExecutionBoard';
+import { ActionNextStepModal } from '../components/ActionNextStepModal';
 
 // ============== TYPES ==============
 type BusinessType = 'convenience' | 'grocery' | 'liquor' | 'restaurant';
@@ -582,6 +584,8 @@ export default function DemandForecastingPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isScenarioOpen, setIsScenarioOpen] = useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [isExecutionOpen, setIsExecutionOpen] = useState(false);
+  const [activePlan, setActivePlan] = useState<ApprovedPlan | null>(null);
   const [items, setItems] = useState(BUSINESS_TOP_ITEMS[businessType]);
   
   // Filter state
@@ -596,6 +600,7 @@ export default function DemandForecastingPage() {
   // Actions state
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [actionFilter, setActionFilter] = useState<'all' | 'open' | 'accepted' | 'done'>('all');
+  const [nextStepAction, setNextStepAction] = useState<ActionItem | null>(null);
 
   // Generate forecast data
   const forecastData = useMemo(() => {
@@ -718,6 +723,82 @@ export default function DemandForecastingPage() {
   const combinedMultiplier = useMemo(() => {
     return Number((filterMultiplier * scenarioMultiplier).toFixed(2));
   }, [filterMultiplier, scenarioMultiplier]);
+
+  // ===== EXECUTION BOARD DATA =====
+  const pacingData: PacingDay[] = useMemo(() => {
+    return filteredForecastData.slice(0, forecastWindow).map((point) => {
+      const dateObj = new Date(point.date);
+      const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      const forecast = Math.round(point.forecastRevenue * combinedMultiplier * filterMultiplier);
+      const forecastU = Math.round(point.forecastUnits * combinedMultiplier * filterMultiplier);
+      // Simulate actuals for past days (within ~5% variance)
+      const today = new Date();
+      const isPast = dateObj < today;
+      const variance = isPast ? Math.round((Math.random() * 10 - 4) * 10) / 10 : null;
+      const actual = isPast ? Math.round(forecast * (1 + (variance ?? 0) / 100)) : null;
+      const actualU = isPast ? Math.round(forecastU * (1 + (variance ?? 0) / 100)) : null;
+      return {
+        date: point.date,
+        dayLabel,
+        forecastRevenue: forecast,
+        actualRevenue: actual,
+        forecastUnits: forecastU,
+        actualUnits: actualU,
+        variance,
+        status: (isPast
+          ? (variance ?? 0) >= 2 ? 'ahead' : (variance ?? 0) >= -2 ? 'on_track' : 'behind'
+          : 'pending') as PacingDay['status'],
+      };
+    });
+  }, [filteredForecastData, forecastWindow, combinedMultiplier, filterMultiplier]);
+
+  const weeklyReview: WeeklyReviewSummary | null = useMemo(() => {
+    if (!activePlan) return null;
+    const completedDays = pacingData.filter(d => d.actualRevenue !== null);
+    if (completedDays.length < 3) return null; // need at least 3 days
+    const totalForecast = completedDays.reduce((s, d) => s + d.forecastRevenue, 0);
+    const totalActual = completedDays.reduce((s, d) => s + (d.actualRevenue ?? 0), 0);
+    const totalForecastU = completedDays.reduce((s, d) => s + d.forecastUnits, 0);
+    const totalActualU = completedDays.reduce((s, d) => s + (d.actualUnits ?? 0), 0);
+    const doneActions = actions.filter(a => a.status === 'done');
+    return {
+      planId: activePlan.id,
+      planName: activePlan.name,
+      dateRange: activePlan.dateRange,
+      forecastRevenue: totalForecast,
+      actualRevenue: totalActual,
+      revenueVariance: totalForecast > 0 ? Math.round(((totalActual - totalForecast) / totalForecast) * 1000) / 10 : 0,
+      forecastUnits: totalForecastU,
+      actualUnits: totalActualU,
+      unitsVariance: totalForecastU > 0 ? Math.round(((totalActualU - totalForecastU) / totalForecastU) * 1000) / 10 : 0,
+      actionsCompleted: doneActions.length,
+      actionsTotal: actions.length,
+      completedValue: doneActions.reduce((s, a) => s + a.expectedValue, 0),
+      highlights: [
+        totalActual > totalForecast ? `Revenue beat plan by $${(totalActual - totalForecast).toLocaleString()}` : 'Held close to plan despite market conditions',
+        doneActions.length > 0 ? `Completed ${doneActions.length} actions worth $${doneActions.reduce((s, a) => s + a.expectedValue, 0).toLocaleString()}` : null,
+      ].filter(Boolean) as string[],
+      lessonsLearned: [
+        totalActual < totalForecast ? 'Forecast ran slightly hot — consider tightening weather adjustments' : null,
+        actions.filter(a => a.status === 'open').length > 2 ? `${actions.filter(a => a.status === 'open').length} actions still pending — assign owners earlier next week` : null,
+        'Review promotion ROI to optimize next cycle',
+      ].filter(Boolean) as string[],
+    };
+  }, [activePlan, pacingData, actions]);
+
+  const handleApprovePlan = (plan: Omit<ApprovedPlan, 'id' | 'approvedAt' | 'actualRevenue' | 'actualUnits'>) => {
+    setActivePlan({
+      ...plan,
+      id: `plan-${Date.now()}`,
+      approvedAt: new Date().toLocaleString(),
+      actualRevenue: 0,
+      actualUnits: 0,
+    });
+  };
+
+  const handleUpdatePlanStatus = (planId: string, status: ApprovedPlan['status']) => {
+    setActivePlan(prev => prev && prev.id === planId ? { ...prev, status } : prev);
+  };
 
   // Chart data transformation
   const chartData = useMemo(() => {
@@ -1004,7 +1085,7 @@ export default function DemandForecastingPage() {
   return (
     <div className="min-h-screen flex bg-[#E8ECF0]">
       {/* ===== LEFT SIDEBAR ===== */}
-      <aside className="w-16 bg-[#1E3A5F] flex flex-col items-center py-4 fixed left-0 top-0 bottom-0 z-50">
+      <aside className="w-16 bg-modisoft-blue flex flex-col items-center py-4 fixed left-0 top-0 bottom-0 z-50">
         {/* Logo */}
         <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-6 overflow-hidden">
           <Image src="/modisoft%20logo.png" alt="Modisoft" width={40} height={40} className="object-contain" />
@@ -1032,7 +1113,7 @@ export default function DemandForecastingPage() {
       {/* ===== MAIN AREA ===== */}
       <div className="flex-1 ml-16">
         {/* ===== TOP NAV BAR ===== */}
-        <nav className="bg-[#1E3A5F] px-6 py-3 sticky top-0 z-40 flex items-center justify-between">
+        <nav className="bg-modisoft-blue px-6 py-3 sticky top-0 z-40 flex items-center justify-between">
           {/* Left side */}
           <div className="flex items-center gap-4">
             {/* Logo text */}
@@ -1042,7 +1123,7 @@ export default function DemandForecastingPage() {
             </div>
 
             {/* Business Name Pill */}
-            <div className="bg-teal-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+            <div className="bg-modisoft-turquoise text-white px-3 py-1 rounded-full text-sm font-medium">
               Business Name
             </div>
 
@@ -1052,14 +1133,14 @@ export default function DemandForecastingPage() {
               <select
                 value={businessType}
                 onChange={(e) => setBusinessType(e.target.value as BusinessType)}
-                className="appearance-none bg-white/15 hover:bg-white/20 text-white px-3 pr-9 py-1 rounded-full text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-teal-400 [&>option]:bg-[#1E3A5F] [&>option]:text-white"
+                className="appearance-none bg-white/15 hover:bg-white/20 text-white px-3 pr-9 py-1 rounded-full text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise [&>option]:bg-modisoft-blue [&>option]:text-white"
                 aria-label="Business type"
                 style={{ colorScheme: 'dark' }}
               >
-                <option value="convenience" className="bg-[#1E3A5F] text-white">Convenience</option>
-                <option value="grocery" className="bg-[#1E3A5F] text-white">Grocery/Retail</option>
-                <option value="liquor" className="bg-[#1E3A5F] text-white">Liquor</option>
-                <option value="restaurant" className="bg-[#1E3A5F] text-white">Restaurant</option>
+                <option value="convenience" className="bg-modisoft-blue text-white">Convenience</option>
+                <option value="grocery" className="bg-modisoft-blue text-white">Grocery/Retail</option>
+                <option value="liquor" className="bg-modisoft-blue text-white">Liquor</option>
+                <option value="restaurant" className="bg-modisoft-blue text-white">Restaurant</option>
               </select>
             </div>
           </div>
@@ -1086,7 +1167,7 @@ export default function DemandForecastingPage() {
                 onClick={() => setViewMode('briefing')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'briefing' 
-                    ? 'bg-white text-[#1E3A5F]' 
+                    ? 'bg-white text-modisoft-blue' 
                     : 'text-white/70 hover:text-white'
                 }`}
               >
@@ -1097,7 +1178,7 @@ export default function DemandForecastingPage() {
                 onClick={() => setViewMode('dashboard')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   viewMode === 'dashboard' 
-                    ? 'bg-white text-[#1E3A5F]' 
+                    ? 'bg-white text-modisoft-blue' 
                     : 'text-white/70 hover:text-white'
                 }`}
               >
@@ -1105,16 +1186,16 @@ export default function DemandForecastingPage() {
                 Dashboard
               </button>
             </div>
-            <button className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
+            <button className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
               What's New
             </button>
-            <button className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
+            <button className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Clock In/Out
             </button>
             <button 
               onClick={() => setIsSunnyOpen(true)}
-              className="bg-amber-400 hover:bg-amber-500 text-gray-900 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+              className="bg-modisoft-yellow hover:bg-amber-500 text-gray-900 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
             >
               <Image src="/sunny.png" alt="Sunny" width={18} height={18} className="w-[18px] h-[18px]" />
               Sunny
@@ -1141,7 +1222,7 @@ export default function DemandForecastingPage() {
               </div>
 
               {/* Big Number Card */}
-              <div className="bg-gradient-to-br from-[#1E3A5F] to-[#2D4A6F] rounded-2xl p-8 mb-8 text-white shadow-xl">
+              <div className="bg-gradient-to-br from-modisoft-blue to-modisoft-blue-light rounded-2xl p-8 mb-8 text-white shadow-xl">
                 <div className="flex items-start justify-between">
                   <div>
                     <p className="text-white/70 text-sm font-medium mb-2">Expected this week</p>
@@ -1150,13 +1231,13 @@ export default function DemandForecastingPage() {
                       {kpiData.todayVsTypical >= 0 ? (
                         <span className="text-emerald-300">↑ {Math.abs(kpiData.todayVsTypical)}% better than usual</span>
                       ) : (
-                        <span className="text-amber-300">↓ {Math.abs(kpiData.todayVsTypical)}% slower than usual</span>
+                        <span className="text-modisoft-yellow">↓ {Math.abs(kpiData.todayVsTypical)}% slower than usual</span>
                       )}
                     </p>
                   </div>
                   <button 
                     onClick={() => setIsSunnyOpen(true)}
-                    className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-xl font-medium transition-colors"
+                    className="flex items-center gap-2 bg-modisoft-yellow hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-xl font-medium transition-colors"
                   >
                     <Image src="/sunny.png" alt="Sunny" width={20} height={20} />
                     Ask Sunny why
@@ -1177,7 +1258,7 @@ export default function DemandForecastingPage() {
                     </div>
                     <button
                       onClick={() => setViewMode('dashboard')}
-                      className="text-teal-600 hover:text-teal-700 font-medium text-sm"
+                      className="text-modisoft-turquoise hover:text-modisoft-teal font-medium text-sm"
                     >
                       View details →
                     </button>
@@ -1201,9 +1282,9 @@ export default function DemandForecastingPage() {
                       <p className="text-2xl font-bold text-gray-900">{fuelKpis.avgConversion}%</p>
                       <p className="text-xs text-gray-400 mt-1">fuel → inside</p>
                     </div>
-                    <div className={`rounded-xl p-4 border ${fuelKpis.lowTankCount > 0 ? 'bg-red-50 border-red-200' : 'bg-emerald-50 border-emerald-200'}`}>
+                    <div className={`rounded-xl p-4 border ${fuelKpis.lowTankCount > 0 ? 'bg-red-50 border-red-200' : 'bg-modisoft-green/10 border-modisoft-green/20'}`}>
                       <p className="text-xs text-gray-500 mb-1">Tank alerts</p>
-                      <p className={`text-2xl font-bold ${fuelKpis.lowTankCount > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      <p className={`text-2xl font-bold ${fuelKpis.lowTankCount > 0 ? 'text-red-600' : 'text-modisoft-green'}`}>
                         {fuelKpis.lowTankCount > 0 ? `${fuelKpis.lowTankCount} low` : 'All good'}
                       </p>
                       <p className="text-xs text-gray-400 mt-1">reorder threshold</p>
@@ -1211,7 +1292,7 @@ export default function DemandForecastingPage() {
                   </div>
 
                   {fuelInsights.length > 0 && (
-                    <div className="flex items-center justify-between bg-amber-50 rounded-xl p-4 border border-amber-200">
+                    <div className="flex items-center justify-between bg-modisoft-yellow/10 rounded-xl p-4 border border-modisoft-yellow/30">
                       <div className="flex items-center gap-3">
                         <span className="text-xl">🚗</span>
                         <div>
@@ -1220,7 +1301,7 @@ export default function DemandForecastingPage() {
                         </div>
                       </div>
                       {fuelInsights[0].actionLabel && (
-                        <button className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors border border-amber-200">
+                        <button className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors border border-modisoft-yellow/30">
                           {fuelInsights[0].actionLabel}
                         </button>
                       )}
@@ -1240,15 +1321,15 @@ export default function DemandForecastingPage() {
                       <div 
                         key={day.date}
                         className={`relative rounded-xl p-4 text-center transition-all ${
-                          isToday ? 'ring-2 ring-teal-500 ring-offset-2' : ''
+                          isToday ? 'ring-2 ring-modisoft-turquoise ring-offset-2' : ''
                         } ${
-                          status === 'busy' ? 'bg-emerald-50 border-2 border-emerald-200' :
-                          status === 'slow' ? 'bg-amber-50 border-2 border-amber-200' :
+                          status === 'busy' ? 'bg-modisoft-green/10 border-2 border-modisoft-green/20' :
+                          status === 'slow' ? 'bg-modisoft-yellow/10 border-2 border-modisoft-yellow/30' :
                           'bg-gray-50 border-2 border-gray-200'
                         }`}
                       >
                         {isToday && (
-                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-teal-500 text-white px-2 py-0.5 rounded-full">TODAY</span>
+                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-modisoft-turquoise text-white px-2 py-0.5 rounded-full">TODAY</span>
                         )}
                         <p className="text-sm font-bold text-gray-900 mb-1">
                           {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
@@ -1257,13 +1338,13 @@ export default function DemandForecastingPage() {
                           {new Date(day.date).getDate()}
                         </p>
                         <div className={`inline-block w-3 h-3 rounded-full ${
-                          status === 'busy' ? 'bg-emerald-500' :
-                          status === 'slow' ? 'bg-amber-500' :
+                          status === 'busy' ? 'bg-modisoft-green' :
+                          status === 'slow' ? 'bg-modisoft-yellow' :
                           'bg-gray-400'
                         }`} />
                         <p className={`text-xs font-medium mt-1 ${
-                          status === 'busy' ? 'text-emerald-700' :
-                          status === 'slow' ? 'text-amber-700' :
+                          status === 'busy' ? 'text-modisoft-green' :
+                          status === 'slow' ? 'text-modisoft-blue' :
                           'text-gray-600'
                         }`}>
                           {status === 'busy' ? 'Busy' : status === 'slow' ? 'Slow' : 'Normal'}
@@ -1274,11 +1355,11 @@ export default function DemandForecastingPage() {
                 </div>
                 <div className="flex items-center justify-center gap-6 mt-4 text-sm">
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                    <div className="w-3 h-3 rounded-full bg-modisoft-green" />
                     <span className="text-gray-600">Busy day - need extra help</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-amber-500" />
+                    <div className="w-3 h-3 rounded-full bg-modisoft-yellow" />
                     <span className="text-gray-600">Slow day - can reduce staff</span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1292,11 +1373,11 @@ export default function DemandForecastingPage() {
               <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <AlertTriangle className="w-5 h-5 text-modisoft-yellow" />
                     <h2 className="text-xl font-bold text-gray-900">Needs Your Attention</h2>
                   </div>
                   {actionStats.openCount > 0 && (
-                    <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                    <span className="px-2 py-1 bg-modisoft-yellow/20 text-modisoft-blue rounded-full text-sm font-medium">
                       {actionStats.openCount} items
                     </span>
                   )}
@@ -1306,20 +1387,20 @@ export default function DemandForecastingPage() {
                     <div 
                       key={action.id} 
                       className={`flex items-center justify-between rounded-xl p-4 border ${
-                        action.type === 'labor' ? 'bg-amber-50 border-amber-200' :
-                        action.type === 'event' ? 'bg-sky-50 border-sky-200' :
-                        action.type === 'promo' ? 'bg-purple-50 border-purple-200' :
-                        action.type === 'fuel' ? 'bg-orange-50 border-orange-200' :
-                        'bg-emerald-50 border-emerald-200'
+                        action.type === 'labor' ? 'bg-modisoft-blue/10 border-modisoft-blue/20' :
+                        action.type === 'event' ? 'bg-modisoft-blue/10 border-modisoft-blue/20' :
+                        action.type === 'promo' ? 'bg-modisoft-turquoise/10 border-modisoft-turquoise/20' :
+                        action.type === 'fuel' ? 'bg-modisoft-yellow/10 border-modisoft-yellow/30' :
+                        'bg-modisoft-green/10 border-modisoft-green/20'
                       }`}
                     >
                       <div className="flex items-center gap-4">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          action.type === 'labor' ? 'bg-amber-400' :
-                          action.type === 'event' ? 'bg-sky-400' :
-                          action.type === 'promo' ? 'bg-purple-400' :
-                          action.type === 'fuel' ? 'bg-orange-400' :
-                          'bg-emerald-400'
+                          action.type === 'labor' ? 'bg-modisoft-blue text-white' :
+                          action.type === 'event' ? 'bg-modisoft-blue text-white' :
+                          action.type === 'promo' ? 'bg-modisoft-turquoise text-white' :
+                          action.type === 'fuel' ? 'bg-modisoft-yellow text-modisoft-blue' :
+                          'bg-modisoft-green text-white'
                         }`}>
                           <span className="text-2xl">
                             {action.type === 'labor' ? '👥' : 
@@ -1338,26 +1419,26 @@ export default function DemandForecastingPage() {
                         {action.suggestedEmployee && (
                           <a 
                             href={`tel:${action.suggestedEmployee.phone}`}
-                            className="flex items-center gap-2 bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-xl font-medium transition-colors"
+                            className="flex items-center gap-2 bg-modisoft-turquoise hover:bg-modisoft-turquoise/90 text-white px-4 py-2 rounded-xl font-medium transition-colors"
                           >
                             <Phone className="w-4 h-4" />
                             Call {action.suggestedEmployee.name.split(' ')[0]}
                           </a>
                         )}
                         <button
-                          onClick={() => handleActionUpdate(action.id, 'accepted')}
-                          className="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl font-medium transition-colors"
+                          onClick={() => setNextStepAction(action)}
+                          className="px-4 py-2 bg-modisoft-blue hover:bg-modisoft-blue/90 text-white rounded-xl font-medium transition-colors"
                         >
-                          Got it
+                          Take Action
                         </button>
                       </div>
                     </div>
                   ))}
 
                   {actions.filter(a => a.status === 'open').length === 0 && (
-                    <div className="flex items-center gap-4 bg-emerald-50 rounded-xl p-4 border border-emerald-200">
-                      <CheckCircle className="w-8 h-8 text-emerald-500" />
-                      <p className="font-medium text-emerald-800">All good! Nothing urgent needs your attention.</p>
+                    <div className="flex items-center gap-4 bg-modisoft-green/10 rounded-xl p-4 border border-modisoft-green/20">
+                      <CheckCircle className="w-8 h-8 text-modisoft-green" />
+                      <p className="font-medium text-modisoft-blue">All good! Nothing urgent needs your attention.</p>
                     </div>
                   )}
                 </div>
@@ -1538,10 +1619,10 @@ export default function DemandForecastingPage() {
             />
           </div>
 
-          {/* ===== ACTION CENTER + CONFIDENCE ===== */}
-          <div className="grid grid-cols-4 gap-4 mb-6">
+          {/* ===== ACTION CENTER ===== */}
+          <div className="mb-6">
             {/* Action Center Card */}
-            <div className="col-span-3 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
+            <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-indigo-100 rounded-lg">
@@ -1617,7 +1698,7 @@ export default function DemandForecastingPage() {
                             </a>
                           )}
                           <button
-                            onClick={() => handleActionUpdate(action.id, 'accepted')}
+                            onClick={() => setNextStepAction(action)}
                             className="px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium rounded-lg"
                           >
                             Accept
@@ -1651,64 +1732,6 @@ export default function DemandForecastingPage() {
                   <p className="text-center text-gray-400 py-4 text-sm">No actions in this category</p>
                 )}
               </div>
-            </div>
-
-            {/* Confidence Card */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <div className={`p-2 rounded-lg ${
-                  forecastConfidence.level === 'high' ? 'bg-emerald-100' :
-                  forecastConfidence.level === 'medium' ? 'bg-amber-100' :
-                  'bg-red-100'
-                }`}>
-                  <Info className={`w-5 h-5 ${
-                    forecastConfidence.level === 'high' ? 'text-emerald-600' :
-                    forecastConfidence.level === 'medium' ? 'text-amber-600' :
-                    'text-red-600'
-                  }`} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Forecast Confidence</h3>
-                </div>
-              </div>
-              
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`text-2xl font-bold ${
-                    forecastConfidence.level === 'high' ? 'text-emerald-600' :
-                    forecastConfidence.level === 'medium' ? 'text-amber-600' :
-                    'text-red-600'
-                  }`}>
-                    {forecastConfidence.level.charAt(0).toUpperCase() + forecastConfidence.level.slice(1)}
-                  </span>
-                  <span className="text-sm text-gray-400">{forecastConfidence.score}/100</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full ${
-                      forecastConfidence.level === 'high' ? 'bg-emerald-500' :
-                      forecastConfidence.level === 'medium' ? 'bg-amber-500' :
-                      'bg-red-500'
-                    }`}
-                    style={{ width: `${forecastConfidence.score}%` }}
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-2">
-                {forecastConfidence.reasons.map((reason, i) => (
-                  <p key={i} className="text-xs text-gray-500 flex items-start gap-2">
-                    <span className="text-gray-400">•</span>
-                    {reason}
-                  </p>
-                ))}
-              </div>
-              
-              {isScenarioActive && (
-                <div className="mt-4 p-2 bg-indigo-50 border border-indigo-200 rounded-lg">
-                  <p className="text-xs text-indigo-700 font-medium">Scenario adjustments applied</p>
-                </div>
-              )}
             </div>
           </div>
 
@@ -1748,12 +1771,12 @@ export default function DemandForecastingPage() {
                   <AreaChart data={chartData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="forecastGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#14B8A6" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#4DC1B4" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#4DC1B4" stopOpacity={0}/>
                       </linearGradient>
                       <linearGradient id="actualGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#FBBF24" stopOpacity={0.15}/>
-                        <stop offset="95%" stopColor="#FBBF24" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#F8BC2E" stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor="#F8BC2E" stopOpacity={0}/>
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
@@ -1786,26 +1809,26 @@ export default function DemandForecastingPage() {
                       type="monotone"
                       dataKey="forecast"
                       name="Scenario Forecast"
-                      stroke="#14B8A6"
+                      stroke="#4DC1B4"
                       strokeWidth={2}
                       fill="url(#forecastGradient)"
                       connectNulls={false}
-                      dot={{ r: 4, fill: '#14B8A6', strokeWidth: 0 }}
+                      dot={{ r: 4, fill: '#4DC1B4', strokeWidth: 0 }}
                     />
                     <Area
                       type="monotone"
                       dataKey="actual"
                       name="Actual"
-                      stroke="#FBBF24"
+                      stroke="#F8BC2E"
                       strokeWidth={2}
                       fill="url(#actualGradient)"
                       connectNulls={false}
-                      dot={{ r: 4, fill: '#FBBF24', strokeWidth: 0 }}
+                      dot={{ r: 4, fill: '#F8BC2E', strokeWidth: 0 }}
                     />
                     {explainChanges && (
                       <>
-                        <ReferenceLine x="Sep 14" stroke="#14B8A6" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Heat wave: +3% for cold drinks/ice', position: 'top', fill: '#14B8A6', fontSize: 10 }} />
-                        <ReferenceLine x="Sep 15" stroke="#F59E0B" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Today +1% vs typical', position: 'top', fill: '#F59E0B', fontSize: 10 }} />
+                        <ReferenceLine x="Sep 14" stroke="#4DC1B4" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Heat wave: +3% for cold drinks/ice', position: 'top', fill: '#4DC1B4', fontSize: 10 }} />
+                        <ReferenceLine x="Sep 15" stroke="#F8BC2E" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Today +1% vs typical', position: 'top', fill: '#F8BC2E', fontSize: 10 }} />
                         <ReferenceLine x="Sep 17" stroke="#8B5CF6" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Snacks promo +8%', position: 'top', fill: '#8B5CF6', fontSize: 10 }} />
                       </>
                     )}
@@ -1830,7 +1853,7 @@ export default function DemandForecastingPage() {
               {/* Legend */}
               <div className="flex items-center gap-4 mb-4 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-teal-500"></div>
+                  <div className="w-3 h-3 rounded bg-modisoft-turquoise"></div>
                   <span className="text-gray-600">Scenario Forecast</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1838,7 +1861,7 @@ export default function DemandForecastingPage() {
                   <span className="text-gray-500 italic">Baseline</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-amber-400"></div>
+                  <div className="w-3 h-3 rounded bg-modisoft-yellow"></div>
                   <span className="text-gray-600">Actual</span>
                 </div>
               </div>
@@ -1859,8 +1882,8 @@ export default function DemandForecastingPage() {
                       tick={{ fontSize: 11, fill: '#94A3B8' }}
                     />
                     <Tooltip content={<CustomTooltip />} />
-                    <Bar dataKey="forecastUnits" name="Scenario Forecast" fill="#14B8A6" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="actualUnits" name="Actual Units" fill="#FBBF24" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="forecastUnits" name="Scenario Forecast" fill="#4DC1B4" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="actualUnits" name="Actual Units" fill="#F8BC2E" radius={[4, 4, 0, 0]} />
                     <Line type="monotone" dataKey="baselineUnits" name="Baseline" stroke="#94A3B8" strokeWidth={2} strokeDasharray="4 4" dot={false} />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -2403,16 +2426,23 @@ export default function DemandForecastingPage() {
                   )}
                   <button 
                     onClick={() => setIsNewItemOpen(true)}
-                    className="bg-violet-500 hover:bg-violet-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                    className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
                     Test New Item
                   </button>
                   <button 
                     onClick={() => setIsScenarioOpen(true)}
-                    className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                    className="bg-modisoft-teal hover:bg-modisoft-blue text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
                   >
                     Edit Scenario
+                  </button>
+                  <button 
+                    onClick={() => setIsExecutionOpen(true)}
+                    className="bg-modisoft-green hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 text-shadow-sm"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                    {activePlan ? 'Execution Board' : 'Lock Plan'}
                   </button>
                   <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
                     <Settings className="w-4 h-4 text-gray-400" />
@@ -2680,7 +2710,7 @@ export default function DemandForecastingPage() {
               </button>
               <button 
                 onClick={() => setIsFilterOpen(false)}
-                className="flex-1 px-4 py-2.5 bg-teal-500 hover:bg-teal-600 text-white rounded-lg text-sm font-medium transition-colors"
+                className="flex-1 px-4 py-2.5 bg-modisoft-turquoise hover:bg-modisoft-teal text-white rounded-lg text-sm font-medium transition-colors"
               >
                 Apply Filters
               </button>
@@ -2707,6 +2737,41 @@ export default function DemandForecastingPage() {
         baselineRevenue={Math.round(kpiData.revenueForecast / (forecastWindow || 14))}
         baselineUnits={Math.round(kpiData.unitsForecast / (forecastWindow || 14))}
       />
+
+      {/* ===== EXECUTION BOARD ===== */}
+      <ExecutionBoard
+        isOpen={isExecutionOpen}
+        onClose={() => setIsExecutionOpen(false)}
+        activePlan={activePlan}
+        onApprovePlan={handleApprovePlan}
+        onUpdatePlanStatus={handleUpdatePlanStatus}
+        actions={actions}
+        onActionUpdate={(id, status) => setActions(prev => updateActionStatus(prev, id, status))}
+        scenarioInputs={scenarioInputs}
+        isScenarioActive={isScenarioActive}
+        forecastedRevenue={kpiData.revenueForecast}
+        forecastedUnits={kpiData.unitsForecast}
+        pacingData={pacingData}
+        weeklyReview={weeklyReview}
+      />
+
+      {/* ===== ACTION NEXT-STEP MODAL ===== */}
+      {nextStepAction && (
+        <ActionNextStepModal
+          action={nextStepAction}
+          onClose={() => setNextStepAction(null)}
+          onComplete={(actionId, status) => {
+            handleActionUpdate(actionId, status);
+            setNextStepAction(null);
+          }}
+          employees={EMPLOYEES[businessType].map(emp => ({
+            id: emp.id,
+            name: emp.name,
+            phone: emp.phone,
+            role: emp.role,
+          }))}
+        />
+      )}
     </div>
   );
 }

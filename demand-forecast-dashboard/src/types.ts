@@ -215,3 +215,54 @@ export const DEFAULT_NEW_ITEM_INPUT: NewItemInput = {
   isPromo: false,
   promoDiscountPct: 0,
 };
+
+// ============== EXECUTION / PLAN SYSTEM ==============
+export type PlanStatus = 'draft' | 'approved' | 'in_progress' | 'completed' | 'archived';
+
+export interface ApprovedPlan {
+  id: string;
+  name: string;
+  status: PlanStatus;
+  dateRange: { from: string; to: string }; // YYYY-MM-DD
+  scenarioInputs: ScenarioInputs;
+  approvedAt: string;
+  approvedBy: string;
+  notes: string;
+  // Snapshot at time of approval
+  forecastedRevenue: number;
+  forecastedUnits: number;
+  // Tracked actuals (filled as days pass)
+  actualRevenue: number;
+  actualUnits: number;
+  // Actions locked to this plan
+  actionIds: string[];
+}
+
+export interface PacingDay {
+  date: string;
+  dayLabel: string;
+  forecastRevenue: number;
+  actualRevenue: number | null;
+  forecastUnits: number;
+  actualUnits: number | null;
+  variance: number | null;     // % vs forecast
+  status: 'ahead' | 'on_track' | 'behind' | 'pending';
+}
+
+export interface WeeklyReviewSummary {
+  planId: string;
+  planName: string;
+  dateRange: { from: string; to: string };
+  forecastRevenue: number;
+  actualRevenue: number;
+  revenueVariance: number;     // %
+  forecastUnits: number;
+  actualUnits: number;
+  unitsVariance: number;       // %
+  actionsCompleted: number;
+  actionsTotal: number;
+  completedValue: number;
+  highlights: string[];
+  lessonsLearned: string[];
+}
+

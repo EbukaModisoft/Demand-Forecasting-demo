@@ -28,7 +28,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <TrendingUp className="w-4 h-4" />,
     min: -20,
     max: 50,
-    color: 'indigo',
+    color: 'modisoft-blue',
     description: 'Expected lift from promotions and discounts',
   },
   {
@@ -37,7 +37,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <Cloud className="w-4 h-4" />,
     min: -30,
     max: 30,
-    color: 'sky',
+    color: 'modisoft-turquoise',
     description: 'Adjust for weather conditions (heat waves, rain, etc.)',
   },
   {
@@ -46,7 +46,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <Calendar className="w-4 h-4" />,
     min: -20,
     max: 50,
-    color: 'amber',
+    color: 'modisoft-yellow',
     description: 'Local events, sports games, holidays, concerts',
   },
   {
@@ -55,7 +55,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <Sliders className="w-4 h-4" />,
     min: -50,
     max: 50,
-    color: 'emerald',
+    color: 'modisoft-teal',
     description: 'Your own judgment—override the forecast up or down',
   },
   {
@@ -64,7 +64,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <DollarSign className="w-4 h-4" />,
     min: -30,
     max: 30,
-    color: 'rose',
+    color: 'modisoft-green',
     description: 'Price increase (negative lift) or decrease (positive lift)',
   },
   {
@@ -73,7 +73,7 @@ const SLIDER_CONFIGS: SliderConfig[] = [
     icon: <Sparkles className="w-4 h-4" />,
     min: -10,
     max: 50,
-    color: 'violet',
+    color: 'modisoft-blue',
     description: 'Expected lift from introducing new menu or product',
   },
 ];

@@ -31,14 +31,14 @@ export const AiInsightsPanel: React.FC<AiInsightsPanelProps> = ({ onOpenSunny })
           <button
             key={insight.id}
             onClick={onOpenSunny}
-            className="w-full text-left p-4 rounded-xl border bg-white/80 backdrop-blur-sm border-amber-100 hover:border-amber-300 hover:shadow-lg hover:shadow-amber-100/50 transition-all duration-300 group"
+            className="w-full text-left p-4 rounded-xl border bg-white/80 backdrop-blur-sm border-modisoft-yellow/20 hover:border-modisoft-yellow/40 hover:shadow-lg hover:shadow-modisoft-yellow/10 transition-all duration-300 group"
           >
             <div className="flex justify-between items-start mb-2">
-              <span className="font-semibold text-gray-900 text-sm group-hover:text-amber-700 transition-colors">{insight.title}</span>
+              <span className="font-semibold text-gray-900 text-sm group-hover:text-modisoft-blue transition-colors">{insight.title}</span>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide border 
-                ${insight.type === 'weather' ? 'bg-orange-50 text-orange-700 border-orange-100' : 
-                  insight.type === 'promo' ? 'bg-purple-50 text-purple-700 border-purple-100' : 
-                  'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                ${insight.type === 'weather' ? 'bg-modisoft-yellow/10 text-modisoft-blue border-modisoft-yellow/20' : 
+                  insight.type === 'promo' ? 'bg-modisoft-turquoise/10 text-modisoft-turquoise border-modisoft-turquoise/20' : 
+                  'bg-modisoft-blue/10 text-modisoft-blue border-modisoft-blue/20'}`}>
                 {insight.impactLabel}
               </span>
             </div>

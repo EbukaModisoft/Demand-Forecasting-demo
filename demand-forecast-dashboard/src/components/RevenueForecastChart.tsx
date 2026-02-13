@@ -27,7 +27,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         </div>
         {payload[0]?.payload.annotation && (
           <div className="mt-2 pt-2 border-t border-gray-100">
-             <div className="flex items-start gap-1.5 text-[10px] font-medium text-amber-600 bg-amber-50 p-1.5 rounded">
+             <div className="flex items-start gap-1.5 text-[10px] font-medium text-modisoft-blue bg-modisoft-yellow/10 p-1.5 rounded">
                <span>💡</span>
                <span>{payload[0].payload.annotation}</span>
              </div>
