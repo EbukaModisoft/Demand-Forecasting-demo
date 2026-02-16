@@ -11,6 +11,7 @@
   --modisoft-turquoise: #4DC1B4; /* PMS 3258 C */
   --modisoft-green: #A4CF5C; /* PMS 367 C */
   --modisoft-yellow: #F8BC2E; /* PMS 123 C */
+  --modisoft-dark-teal: #2E595A;
   
   /* Chart Colors Matching Brand */
   --chart-primary: #0B1932;
@@ -28,9 +29,11 @@
   --color-modisoft-blue: var(--modisoft-blue);
   --color-modisoft-blue-light: var(--modisoft-blue-light);
   --color-modisoft-teal: var(--modisoft-teal);
+  --color-modisoft-dark-teal: var(--modisoft-dark-teal);
   --color-modisoft-turquoise: var(--modisoft-turquoise);
   --color-modisoft-green: var(--modisoft-green);
   --color-modisoft-yellow: var(--modisoft-yellow);
+  --color-modisoft-light-green: var(--modisoft-green);
 }
 
 /* Disable dark mode - always light */
@@ -85,6 +88,7 @@ select:focus {
 
 .kpi-card:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
 }
 
 /* Table row hover */
@@ -131,10 +135,62 @@ button:active {
   }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .slide-in-right {
   animation: slideInFromRight 0.3s ease-out;
 }
 
 .slide-in-left {
   animation: slideInFromLeft 0.3s ease-out;
+}
+
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Polished card base */
+.card-elevated {
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.card-elevated:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
 }

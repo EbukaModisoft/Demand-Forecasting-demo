@@ -320,7 +320,7 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
           {/* Simulated chat bubble */}
           <div className="mx-auto max-w-sm bg-gray-50 rounded-2xl p-4 border border-gray-200 text-left space-y-3">
             <div className="flex justify-end">
-              <div className="bg-indigo-500 text-white px-4 py-2 rounded-2xl rounded-br-sm text-sm max-w-[80%]">
+              <div className="bg-modisoft-teal text-white px-4 py-2 rounded-2xl rounded-br-sm text-sm max-w-[80%]">
                 {message}
               </div>
             </div>
@@ -346,7 +346,7 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
             <div className="mt-6 flex gap-3 justify-center">
               <button
                 onClick={handleEmployeeConfirmed}
-                className="flex items-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-modisoft-green hover:bg-modisoft-green/90 text-white rounded-xl font-semibold transition-all"
               >
                 <CheckCircle className="w-4 h-4" />
                 They Confirmed
@@ -361,7 +361,7 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
           )}
 
           {employeeReply && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-emerald-600">
+            <div className="mt-4 flex items-center justify-center gap-2 text-modisoft-green">
               <CheckCircle className="w-5 h-5" />
               <span className="text-sm font-semibold">
                 {isDownstaff ? 'Acknowledged — shift cancelled.' : 'Confirmed — marking as accepted...'}
@@ -373,8 +373,8 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
 
       {step === 'confirmed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+          <div className="w-16 h-16 bg-modisoft-green/15 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-modisoft-green" />
           </div>
           <p className="text-lg font-bold text-gray-900 mb-1">
             {isDownstaff ? 'Shift Cancelled' : 'Shift Confirmed!'}
@@ -505,8 +505,8 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
 
       {step === 'sending' && (
         <div className="text-center py-8">
-          <div className="w-14 h-14 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <Tag className="w-6 h-6 text-purple-600" />
+          <div className="w-14 h-14 bg-modisoft-turquoise/15 rounded-full flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <Tag className="w-6 h-6 text-modisoft-teal" />
           </div>
           <p className="font-semibold text-gray-900 mb-1">Applying promotion...</p>
           <p className="text-sm text-gray-500">Setting up your promo across the system</p>
@@ -515,8 +515,8 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
 
       {step === 'confirmed' && (
         <div className="text-center py-8">
-          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <CheckCircle className="w-8 h-8 text-emerald-600" />
+          <div className="w-16 h-16 bg-modisoft-green/15 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle className="w-8 h-8 text-modisoft-green" />
           </div>
           <p className="text-lg font-bold text-gray-900 mb-1">Promotion Applied!</p>
           <p className="text-sm text-gray-500">

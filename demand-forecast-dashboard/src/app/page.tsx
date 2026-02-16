@@ -533,12 +533,12 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
 
 // ============== SIDEBAR ICONS ==============
 const SidebarIcon = ({ icon: Icon, active = false, badge = false }: { icon: any; active?: boolean; badge?: boolean }) => (
-  <button className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-    active ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white'
+  <button className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+    active ? 'bg-modisoft-turquoise/25 text-white shadow-[0_0_8px_rgba(77,193,180,0.15)]' : 'text-white/50 hover:bg-white/10 hover:text-white/90'
   }`}>
     <Icon className="w-5 h-5" />
     {badge && (
-      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-[#1E3A5F]" />
+      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-modisoft-yellow rounded-full border-2 border-modisoft-blue" />
     )}
   </button>
 );
@@ -555,14 +555,16 @@ const KpiCard = ({
   subtitle: string;
   tooltip?: string;
 }) => (
-  <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+  <div className="kpi-card bg-white rounded-xl border border-gray-100/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative overflow-hidden">
+    {/* Brand accent top bar */}
+    <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-modisoft-turquoise to-modisoft-green" />
     <div className="flex items-center justify-between mb-2">
-      <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
+      <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1">
         {title}
         {tooltip && <Info className="w-3 h-3 text-gray-300" />}
       </span>
     </div>
-    <p className="text-2xl font-bold text-gray-900 mb-0.5">{value}</p>
+    <p className="text-2xl font-bold text-modisoft-blue mb-0.5">{value}</p>
     <p className="text-xs text-gray-400">{subtitle}</p>
   </div>
 );
@@ -1069,11 +1071,12 @@ export default function DemandForecastingPage() {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
-          <p className="font-medium text-gray-900 mb-1">{label}</p>
+        <div className="bg-white p-3 rounded-xl shadow-xl border border-gray-100 backdrop-blur-sm" style={{ borderTop: '2px solid #4DC1B4' }}>
+          <p className="font-semibold text-modisoft-blue text-sm mb-1.5">{label}</p>
           {payload.map((entry: any, index: number) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {entry.name.includes('Units') ? entry.value?.toLocaleString() : formatCurrency(entry.value || 0)}
+            <p key={index} className="text-sm flex items-center gap-2" style={{ color: entry.color }}>
+              <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: entry.color }} />
+              {entry.name}: <strong>{entry.name.includes('Units') ? entry.value?.toLocaleString() : formatCurrency(entry.value || 0)}</strong>
             </p>
           ))}
         </div>
@@ -1154,7 +1157,7 @@ export default function DemandForecastingPage() {
                 placeholder="Search For Pages, Reports And More"
                 value={globalSearch}
                 onChange={(e) => setGlobalSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full pl-10 pr-4 py-2 bg-white rounded-lg text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise"
               />
             </div>
           </div>
@@ -1453,7 +1456,7 @@ export default function DemandForecastingPage() {
                     return (
                       <div key={employee.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-teal-500 flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 rounded-full bg-modisoft-teal flex items-center justify-center text-white font-bold">
                             {employee.name.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div>
@@ -1465,10 +1468,10 @@ export default function DemandForecastingPage() {
                           <span className="text-sm text-gray-600">{scheduledDays} days scheduled</span>
                           <a 
                             href={`tel:${employee.phone}`}
-                            className="p-2 bg-white hover:bg-teal-50 rounded-lg border border-gray-200 transition-colors"
+                            className="p-2 bg-white hover:bg-modisoft-turquoise/10 rounded-lg border border-gray-200 transition-colors"
                             title={`Call ${employee.name}`}
                           >
-                            <Phone className="w-4 h-4 text-teal-600" />
+                            <Phone className="w-4 h-4 text-modisoft-teal" />
                           </a>
                         </div>
                       </div>
@@ -1518,9 +1521,12 @@ export default function DemandForecastingPage() {
           {/* Page Header Row */}
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="text-xl font-bold text-gray-900 mb-1">Demand Forecasting</h1>
-              <p className="text-gray-500 text-sm">Before discounts &amp; promotions</p>
-              <p className="text-gray-500 text-sm">Track what's selling, forecast what's next, and optimize orders — all in one view.</p>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-1 h-6 bg-modisoft-turquoise rounded-full" />
+                <h1 className="text-xl font-bold text-modisoft-blue">Demand Forecasting</h1>
+              </div>
+              <p className="text-gray-500 text-sm ml-3">Before discounts &amp; promotions</p>
+              <p className="text-gray-500 text-sm ml-3">Track what's selling, forecast what's next, and optimize orders — all in one view.</p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -1530,7 +1536,7 @@ export default function DemandForecastingPage() {
                   type="checkbox" 
                   checked={explainChanges}
                   onChange={(e) => setExplainChanges(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
+                  className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
                 />
                 <span className="text-sm text-gray-600">Explain changes</span>
               </label>
@@ -1543,7 +1549,7 @@ export default function DemandForecastingPage() {
                   placeholder="Filter by item name"
                   value={itemSearch}
                   onChange={(e) => setItemSearch(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise focus:border-transparent"
                 />
               </div>
 
@@ -1556,7 +1562,7 @@ export default function DemandForecastingPage() {
               {/* View Filter Button */}
               <button 
                 onClick={() => setIsFilterOpen(true)}
-                className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Filter className="w-4 h-4" />
                 View Filter
@@ -1574,7 +1580,7 @@ export default function DemandForecastingPage() {
                   onClick={() => handleWindowChange(window as 7 | 14 | 28)}
                   className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     forecastWindow === window
-                      ? 'bg-[#1E3A5F] text-white'
+                      ? 'bg-modisoft-blue text-white shadow-sm'
                       : 'text-gray-600 hover:bg-gray-50'
                   }`}
                 >
@@ -1625,8 +1631,8 @@ export default function DemandForecastingPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <AlertTriangle className="w-5 h-5 text-indigo-600" />
+                  <div className="p-2 bg-modisoft-turquoise/15 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-modisoft-teal" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900">Action Center</h3>
@@ -1672,11 +1678,11 @@ export default function DemandForecastingPage() {
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                        action.type === 'labor' ? 'bg-indigo-100 text-indigo-600' :
-                        action.type === 'promo' ? 'bg-purple-100 text-purple-600' :
-                        action.type === 'pricing' ? 'bg-emerald-100 text-emerald-600' :
-                        action.type === 'fuel' ? 'bg-orange-100 text-orange-600' :
-                        'bg-sky-100 text-sky-600'
+                        action.type === 'labor' ? 'bg-modisoft-blue/10 text-modisoft-blue' :
+                        action.type === 'promo' ? 'bg-modisoft-turquoise/15 text-modisoft-teal' :
+                        action.type === 'pricing' ? 'bg-modisoft-green/15 text-modisoft-teal' :
+                        action.type === 'fuel' ? 'bg-modisoft-yellow/15 text-modisoft-blue' :
+                        'bg-modisoft-turquoise/10 text-modisoft-teal'
                       }`}>
                         {action.type === 'labor' ? '👥' : action.type === 'promo' ? '🏷️' : action.type === 'pricing' ? '💰' : action.type === 'fuel' ? '⛽' : '📅'}
                       </div>
@@ -1691,7 +1697,7 @@ export default function DemandForecastingPage() {
                           {action.suggestedEmployee && (
                             <a 
                               href={`tel:${action.suggestedEmployee.phone}`}
-                              className="px-2 py-1 bg-teal-500 hover:bg-teal-600 text-white text-xs font-medium rounded-lg flex items-center gap-1"
+                              className="px-2 py-1 bg-modisoft-turquoise hover:bg-modisoft-teal text-white text-xs font-medium rounded-lg flex items-center gap-1"
                             >
                               <Phone className="w-3 h-3" />
                               Call
@@ -1699,7 +1705,7 @@ export default function DemandForecastingPage() {
                           )}
                           <button
                             onClick={() => setNextStepAction(action)}
-                            className="px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium rounded-lg"
+                            className="px-2 py-1 bg-modisoft-teal hover:bg-modisoft-blue text-white text-xs font-medium rounded-lg"
                           >
                             Accept
                           </button>
@@ -1753,7 +1759,7 @@ export default function DemandForecastingPage() {
               {/* Legend */}
               <div className="flex items-center gap-4 mb-4 text-xs">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-teal-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-modisoft-turquoise"></div>
                   <span className="text-gray-600">Scenario Forecast</span>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -1761,7 +1767,7 @@ export default function DemandForecastingPage() {
                   <span className="text-gray-500 italic">Baseline</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-amber-400"></div>
+                  <div className="w-3 h-3 rounded-full bg-modisoft-yellow"></div>
                   <span className="text-gray-600">Actual</span>
                 </div>
               </div>
@@ -1944,7 +1950,7 @@ export default function DemandForecastingPage() {
                   <div className="col-span-2 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">Tank Levels</h3>
-                      <button className="text-teal-600 text-sm font-medium hover:text-teal-700">Schedule Delivery →</button>
+                      <button className="text-modisoft-turquoise text-sm font-medium hover:text-modisoft-teal">Schedule Delivery →</button>
                     </div>
                     <div className="grid grid-cols-4 gap-4">
                       {fuelTanks.map((tank) => {
@@ -2028,8 +2034,8 @@ export default function DemandForecastingPage() {
                         <p className="text-xs text-gray-500">Rush hours highlighted • Adjust staffing accordingly</p>
                       </div>
                       <div className="flex items-center gap-4 text-xs">
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-amber-400"></span> Rush Hour</span>
-                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-teal-400"></span> Normal</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-modisoft-yellow"></span> Rush Hour</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded bg-modisoft-turquoise"></span> Normal</span>
                       </div>
                     </div>
                     <div className="h-48">
@@ -2060,12 +2066,12 @@ export default function DemandForecastingPage() {
                           <Bar 
                             dataKey="gallons" 
                             radius={[4, 4, 0, 0]}
-                            fill="#14b8a6"
+                            fill="#4DC1B4"
                           >
                             {todayFuelForecast.hourlyDemand.map((entry, index) => (
                               <Cell 
                                 key={`cell-${index}`} 
-                                fill={entry.isRushHour ? '#f59e0b' : '#14b8a6'} 
+                                fill={entry.isRushHour ? '#F8BC2E' : '#4DC1B4'} 
                               />
                             ))}
                           </Bar>
@@ -2077,7 +2083,7 @@ export default function DemandForecastingPage() {
 
                 {/* Cross-sell Opportunity Card */}
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl border border-purple-100 p-5 shadow-sm">
+                  <div className="bg-gradient-to-br from-modisoft-turquoise/10 to-modisoft-blue/5 rounded-xl border border-modisoft-turquoise/20 p-5 shadow-sm">
                     <div className="flex items-center gap-2 mb-3">
                       <span className="text-2xl">🛒</span>
                       <h3 className="font-semibold text-gray-900">Cross-Sell Opportunity</h3>
@@ -2089,10 +2095,10 @@ export default function DemandForecastingPage() {
                     <div className="space-y-2 text-sm">
                       <p className="text-gray-700">💡 <strong>Top cross-sells:</strong> Coffee, Energy Drinks, Snacks</p>
                       <p className="text-gray-700">🎯 <strong>Target:</strong> Display at pump sightline + register</p>
-                      <p className="text-emerald-600 font-medium">🚀 +5% conversion = +${Math.round(fuelKpis.todayGallons / 12 * 0.05 * 8)}/day extra</p>
+                      <p className="text-modisoft-teal font-medium">🚀 +5% conversion = +${Math.round(fuelKpis.todayGallons / 12 * 0.05 * 8)}/day extra</p>
                     </div>
                     <div className="flex gap-2 mt-4">
-                      <button className="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium">Run Fuel Bundle</button>
+                      <button className="bg-modisoft-teal hover:bg-modisoft-blue text-white px-3 py-1.5 rounded-lg text-xs font-medium">Run Fuel Bundle</button>
                       <button className="bg-white hover:bg-gray-50 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium border">View Analytics</button>
                     </div>
                   </div>
@@ -2101,7 +2107,7 @@ export default function DemandForecastingPage() {
                   <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h3 className="font-semibold text-gray-900">Fast-Mover Refill (Now → +6h)</h3>
-                      <button className="text-teal-600 text-sm font-medium">Print list</button>
+                      <button className="text-modisoft-turquoise text-sm font-medium">Print list</button>
                     </div>
                     <div className="space-y-3">
                       {[{ name: 'Coffee Cups', expected: 85, onShelf: 20, backroom: 100, refillNow: 25 },
@@ -2138,14 +2144,14 @@ export default function DemandForecastingPage() {
                   <div key={i} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-gray-900">{item.category}</span>
-                      <span className={`px-2 py-0.5 rounded text-xs ${item.badge === 'Velocity-based' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>{item.badge}</span>
+                      <span className={`px-2 py-0.5 rounded text-xs ${item.badge === 'Velocity-based' ? 'bg-modisoft-turquoise/15 text-modisoft-teal' : 'bg-modisoft-blue/10 text-modisoft-blue'}`}>{item.badge}</span>
                     </div>
                     <div className="flex items-center gap-6 text-sm">
                       <span className="text-gray-500">Expected (48h): <strong className="text-gray-900">{item.expected}</strong></span>
                       <span className="text-gray-500">Stock: <strong className="text-gray-900">{item.stockCanSell}</strong></span>
                       <span className={`font-medium ${item.hoursLeft < 12 ? 'text-red-600' : 'text-amber-600'}`}>{item.hoursLeft}h left</span>
                       <div className="flex gap-1">
-                        <button className="bg-teal-500 text-white px-2 py-1 rounded text-xs">Order</button>
+                        <button className="bg-modisoft-turquoise text-white px-2 py-1 rounded text-xs">Order</button>
                         <button className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Substitute</button>
                       </div>
                     </div>
@@ -2174,12 +2180,12 @@ export default function DemandForecastingPage() {
                   <div className="bg-white rounded-lg p-3 border border-amber-200">
                     <p className="font-medium">Tito's + Mixers Bundle</p>
                     <p className="text-gray-500 text-xs">Vodka + Tonic + Limes</p>
-                    <button className="mt-2 text-teal-600 text-xs font-medium">Print shelf tag</button>
+                    <button className="mt-2 text-modisoft-turquoise text-xs font-medium">Print shelf tag</button>
                   </div>
                   <div className="bg-white rounded-lg p-3 border border-amber-200">
                     <p className="font-medium">Wine Night Pack</p>
                     <p className="text-gray-500 text-xs">2 Reds + Cheese Crackers</p>
-                    <button className="mt-2 text-teal-600 text-xs font-medium">Print shelf tag</button>
+                    <button className="mt-2 text-modisoft-turquoise text-xs font-medium">Print shelf tag</button>
                   </div>
                 </div>
               </div>
@@ -2191,7 +2197,7 @@ export default function DemandForecastingPage() {
                   {['Tito\'s Vodka', 'Modelo 12pk', 'White Claw', 'Jameson'].map((item, i) => (
                     <div key={i} className="flex justify-between items-center py-1">
                       <span className="text-gray-700">{item}</span>
-                      <button className="text-teal-600 text-xs font-medium">+ Add to PO</button>
+                      <button className="text-modisoft-turquoise text-xs font-medium">+ Add to PO</button>
                     </div>
                   ))}
                 </div>
@@ -2214,7 +2220,7 @@ export default function DemandForecastingPage() {
                       <div className="flex items-center gap-4">
                         <span className="text-gray-500 text-xs">Prep: {row.prepDate}</span>
                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${row.risk === 'High' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>{row.risk}</span>
-                        <button className="text-teal-600 text-xs">Prioritize</button>
+                        <button className="text-modisoft-turquoise text-xs">Prioritize</button>
                       </div>
                     </div>
                   ))}
@@ -2222,18 +2228,18 @@ export default function DemandForecastingPage() {
               </div>
               
               {/* Prep Now Widget */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-100 p-5 shadow-sm">
+              <div className="bg-gradient-to-br from-modisoft-green/10 to-modisoft-turquoise/5 rounded-xl border border-modisoft-green/20 p-5 shadow-sm">
                 <h3 className="font-semibold text-gray-900 mb-4">👨‍🍳 Prep Now (Lunch)</h3>
                 <div className="space-y-2 text-sm">
                   {[{ item: 'Burger Patties', qty: 24 }, { item: 'Caesar Dressing', qty: '2 gal' }, { item: 'Fries (blanched)', qty: '15 lb' }].map((row, i) => (
-                    <div key={i} className="flex justify-between items-center bg-white rounded-lg p-2 border border-green-200">
+                    <div key={i} className="flex justify-between items-center bg-white rounded-lg p-2 border border-modisoft-green/20">
                       <span className="font-medium">{row.item}</span>
                       <span className="text-gray-600">{row.qty}</span>
                     </div>
                   ))}
                 </div>
                 <div className="flex gap-2 mt-4">
-                  <button className="bg-teal-500 text-white px-3 py-1.5 rounded-lg text-xs font-medium">Print prep list</button>
+                  <button className="bg-modisoft-turquoise text-white px-3 py-1.5 rounded-lg text-xs font-medium">Print prep list</button>
                   <button className="bg-white text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium border">Defer to later</button>
                 </div>
               </div>
@@ -2241,21 +2247,21 @@ export default function DemandForecastingPage() {
           )}
 
           {/* ===== LABOR VS DEMAND PLANNER (ALL BUSINESS TYPES) ===== */}
-          <div className="mb-6 bg-gradient-to-br from-indigo-50 via-slate-50 to-emerald-50 rounded-xl border border-indigo-100 p-5 shadow-sm">
+          <div className="mb-6 bg-gradient-to-br from-modisoft-turquoise/5 via-slate-50 to-modisoft-green/5 rounded-xl border border-modisoft-turquoise/15 p-5 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-[11px] uppercase tracking-[0.12em] text-indigo-500 font-semibold">Labor vs Demand</p>
+                <p className="text-[11px] uppercase tracking-[0.12em] text-modisoft-teal font-semibold">Labor vs Demand</p>
                 <h3 className="font-semibold text-gray-900 text-lg">Staffing plan for next {forecastWindow} days</h3>
                 <p className="text-sm text-gray-600">Shows where we should upstaff or downstaff based on {LABOR_CONFIG[businessType].unitLabel} forecast and why.</p>
               </div>
               <div className="flex items-center gap-2 text-xs font-semibold">
                 <span className="px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">{BUSINESS_PROFILES[businessType].label}</span>
-                <span className="px-2 py-1 rounded-full bg-white text-indigo-700 border border-indigo-200">Auto-recommended</span>
+                <span className="px-2 py-1 rounded-full bg-white text-modisoft-teal border border-modisoft-turquoise/20">Auto-recommended</span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 items-start">
-              <div className="col-span-2 h-52 bg-white/60 border border-indigo-100 rounded-lg p-3 shadow-sm">
+              <div className="col-span-2 h-52 bg-white/60 border border-modisoft-turquoise/15 rounded-lg p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-2 text-xs text-gray-500 font-semibold">
                   <span>Scheduled vs needed hours</span>
                   <span className="text-gray-400">Per day</span>
@@ -2269,12 +2275,12 @@ export default function DemandForecastingPage() {
                       if (!active || !payload || !payload.length) return null;
                       const row = payload[0].payload as LaborPlanRow;
                       return (
-                        <div className="bg-white border border-indigo-100 rounded-lg p-3 shadow-lg text-xs min-w-[220px]">
+                        <div className="bg-white border border-modisoft-turquoise/15 rounded-lg p-3 shadow-lg text-xs min-w-[220px]">
                           <p className="font-semibold text-gray-900 mb-1">{label}</p>
                           <div className="flex items-center justify-between text-gray-600"><span>Needed</span><span className="font-mono text-gray-900">{row.neededHours}h</span></div>
                           <div className="flex items-center justify-between text-gray-600"><span>Scheduled</span><span className="font-mono text-gray-900">{row.scheduledHours}h</span></div>
                           <div className="flex items-center justify-between text-gray-600 mt-1"><span>Delta</span><span className={`font-semibold ${row.deltaHours > 0 ? 'text-emerald-700' : row.deltaHours < 0 ? 'text-slate-700' : 'text-gray-800'}`}>{row.deltaHours > 0 ? `+${row.deltaHours}h` : `${row.deltaHours}h`}</span></div>
-                          <p className="mt-2 text-[11px] text-indigo-700 font-semibold">{row.recommendation}: {row.reason}</p>
+                          <p className="mt-2 text-[11px] text-modisoft-teal font-semibold">{row.recommendation}: {row.reason}</p>
                           {row.assignedEmployees.length > 0 && (
                             <div className="mt-2 pt-2 border-t border-gray-100">
                               <p className="text-[10px] text-gray-500 font-semibold mb-1">ASSIGNED STAFF:</p>
@@ -2291,12 +2297,12 @@ export default function DemandForecastingPage() {
                       );
                     }} />
                     <Bar dataKey="scheduledHours" name="Scheduled" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="neededHours" name="Needed" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="neededHours" name="Needed" fill="#2E595A" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              <div className="bg-white/70 border border-indigo-100 rounded-lg p-3 flex flex-col gap-2 shadow-sm">
+              <div className="bg-white/70 border border-modisoft-turquoise/15 rounded-lg p-3 flex flex-col gap-2 shadow-sm">
                 <p className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold">Actions Summary</p>
                 {laborSummary ? (
                   <>
@@ -2309,7 +2315,7 @@ export default function DemandForecastingPage() {
                       <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">{laborSummary.downstaffDays.length} days</span>
                     </div>
                     {laborSummary.peakDay && (
-                      <div className="mt-2 p-2 rounded-md bg-indigo-50 border border-indigo-100 text-xs text-indigo-800 font-semibold">
+                      <div className="mt-2 p-2 rounded-md bg-modisoft-turquoise/10 border border-modisoft-turquoise/15 text-xs text-modisoft-blue font-semibold">
                         Peak load: {laborSummary.peakDay.dayLabel} needs {laborSummary.peakDay.neededHours}h ({laborSummary.peakDay.deltaHours > 0 ? '+' : ''}{laborSummary.peakDay.deltaHours}h vs schedule)
                       </div>
                     )}
@@ -2347,13 +2353,13 @@ export default function DemandForecastingPage() {
                     <span>Needed: <strong className="text-gray-900">{row.neededHours}h</strong></span>
                     <span>Sched: <strong className="text-gray-900">{row.scheduledHours}h</strong></span>
                   </div>
-                  <p className="mt-2 text-[11px] text-indigo-700 font-semibold leading-relaxed">{row.reason}</p>
+                  <p className="mt-2 text-[11px] text-modisoft-teal font-semibold leading-relaxed">{row.reason}</p>
                   {row.assignedEmployees.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-50">
                       <p className="text-[10px] text-gray-400 font-medium mb-1">Staff:</p>
                       <div className="flex flex-wrap gap-1">
                         {row.assignedEmployees.slice(0, 3).map((name, i) => (
-                          <span key={i} className="text-[10px] px-1 py-0.5 bg-indigo-50 text-indigo-600 rounded">{name.split(' ')[0]}</span>
+                          <span key={i} className="text-[10px] px-1 py-0.5 bg-modisoft-turquoise/10 text-modisoft-teal rounded">{name.split(' ')[0]}</span>
                         ))}
                         {row.assignedEmployees.length > 3 && (
                           <span className="text-[10px] px-1 py-0.5 bg-gray-50 text-gray-500 rounded">+{row.assignedEmployees.length - 3}</span>
@@ -2379,7 +2385,7 @@ export default function DemandForecastingPage() {
                 <h3 className="font-semibold text-gray-900">AI Insights</h3>
                 <button 
                   onClick={() => setIsSunnyOpen(true)}
-                  className="flex items-center gap-1 text-teal-600 hover:text-teal-700 text-sm font-medium"
+                  className="flex items-center gap-1 text-modisoft-turquoise hover:text-modisoft-teal text-sm font-medium"
                 >
                   <Image src="/sunny.png" alt="Sunny" width={16} height={16} className="w-4 h-4" />
                   Ask Sunny
@@ -2402,7 +2408,7 @@ export default function DemandForecastingPage() {
                 {INSIGHT_EVENTS.length > 5 && (
                   <button 
                     onClick={() => setIsSunnyOpen(true)}
-                    className="w-full text-center text-xs text-teal-600 font-medium py-2 border border-dashed border-teal-200 rounded-lg hover:bg-teal-50 transition-colors"
+                    className="w-full text-center text-xs text-modisoft-teal font-medium py-2 border border-dashed border-modisoft-turquoise/30 rounded-lg hover:bg-modisoft-turquoise/5 transition-colors"
                   >
                     View {INSIGHT_EVENTS.length - 5} more insights
                   </button>
@@ -2420,7 +2426,7 @@ export default function DemandForecastingPage() {
                 <h3 className="font-semibold text-gray-900">Top items next 14 days</h3>
                 <div className="flex items-center gap-2">
                   {isScenarioActive && (
-                    <span className="px-2 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full border border-indigo-200">
+                    <span className="px-2 py-1 bg-modisoft-turquoise/15 text-modisoft-teal text-xs font-medium rounded-full border border-modisoft-turquoise/20">
                       Scenario active
                     </span>
                   )}
@@ -2499,7 +2505,7 @@ export default function DemandForecastingPage() {
                         <td className="px-5 py-3 text-center">
                           <button
                             onClick={() => handleTogglePromo(item.id)}
-                            className={`relative w-9 h-5 rounded-full transition-colors ${item.isPromoActive ? 'bg-teal-500' : 'bg-gray-200'}`}
+                            className={`relative w-9 h-5 rounded-full transition-colors ${item.isPromoActive ? 'bg-modisoft-turquoise' : 'bg-gray-200'}`}
                           >
                             <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${item.isPromoActive ? 'translate-x-4' : ''}`} />
                           </button>
@@ -2508,7 +2514,7 @@ export default function DemandForecastingPage() {
                           <span className="text-gray-600">{item.price.toFixed(2)}</span>
                         </td>
                         <td className="px-5 py-3 text-center">
-                          <button className="bg-teal-500 hover:bg-teal-600 text-white px-3 py-1 rounded text-xs font-medium transition-colors">
+                          <button className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-3 py-1 rounded text-xs font-medium transition-colors">
                             Apply
                           </button>
                         </td>
@@ -2532,7 +2538,7 @@ export default function DemandForecastingPage() {
             onClick={() => setIsSunnyOpen(false)}
           />
           <div className="fixed right-0 top-0 bottom-0 w-[380px] bg-white shadow-2xl z-50 flex flex-col">
-            <div className="p-4 bg-[#1E3A5F] flex items-center justify-between">
+            <div className="p-4 bg-modisoft-blue flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-1 bg-white rounded-lg">
                   <Image src="/sunny.png" alt="Sunny" width={28} height={28} className="w-7 h-7" />
@@ -2565,9 +2571,9 @@ export default function DemandForecastingPage() {
                 <input
                   type="text"
                   placeholder="Type message..."
-                  className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                  className="w-full pl-4 pr-12 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise focus:bg-white transition-all"
                 />
-                <button className="absolute right-2 top-2 p-1.5 bg-teal-500 hover:bg-teal-600 rounded-lg text-white transition-colors">
+                <button className="absolute right-2 top-2 p-1.5 bg-modisoft-turquoise hover:bg-modisoft-teal rounded-lg text-white transition-colors">
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -2585,7 +2591,7 @@ export default function DemandForecastingPage() {
           />
           <div className="fixed right-0 top-0 bottom-0 w-[420px] bg-white shadow-2xl z-50 flex flex-col">
             {/* Header */}
-            <div className="p-5 bg-[#1E3A5F] flex items-center justify-between">
+            <div className="p-5 bg-modisoft-blue flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Filter className="w-5 h-5 text-white" />
                 <h3 className="font-bold text-white text-lg">View Filter</h3>
@@ -2617,7 +2623,7 @@ export default function DemandForecastingPage() {
                             );
                           }
                         }}
-                        className="w-4 h-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
+                        className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
                       />
                       <span className="text-sm text-gray-700">{store}</span>
                     </label>
@@ -2645,7 +2651,7 @@ export default function DemandForecastingPage() {
                             );
                           }
                         }}
-                        className="w-4 h-4 rounded border-gray-300 text-teal-500 focus:ring-teal-500"
+                        className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
                       />
                       <span className="text-sm text-gray-700">{dept}</span>
                     </label>
@@ -2663,7 +2669,7 @@ export default function DemandForecastingPage() {
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise"
                     />
                   </div>
                   <div>
@@ -2672,7 +2678,7 @@ export default function DemandForecastingPage() {
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise"
                     />
                   </div>
                 </div>
@@ -2686,7 +2692,7 @@ export default function DemandForecastingPage() {
                     <button
                       key={preset}
                       onClick={() => applyQuickPreset(preset)}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-teal-50 hover:text-teal-600 text-gray-600 text-xs font-medium rounded-lg transition-colors"
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-modisoft-turquoise/10 hover:text-modisoft-teal text-gray-600 text-xs font-medium rounded-lg transition-colors"
                     >
                       {preset}
                     </button>
