@@ -182,6 +182,25 @@ button:active {
   animation: scaleIn 0.2s ease-out;
 }
 
+/* Fuel tank wave animations */
+@keyframes fuelWaveDrift1 {
+  from { transform: translateX(0); }
+  to { transform: translateX(-220px); }
+}
+
+@keyframes fuelWaveDrift2 {
+  from { transform: translateX(0); }
+  to { transform: translateX(220px); }
+}
+
+.fuel-wave-1 {
+  animation: fuelWaveDrift1 4s linear infinite;
+}
+
+.fuel-wave-2 {
+  animation: fuelWaveDrift2 5.5s linear infinite;
+}
+
 /* Polished card base */
 .card-elevated {
   background: white;

@@ -130,10 +130,13 @@ export type FuelGrade = 'regular' | 'plus' | 'premium' | 'diesel';
 
 export interface FuelTank {
   grade: FuelGrade;
+  label: string; // display name e.g. "Regular Unleaded 1"
   capacity: number; // gallons
   currentLevel: number; // gallons
   pricePerGallon: number;
+  profitPerGallon: number; // margin per gallon
   dailyAvgSales: number; // gallons per day
+  averageSellingPrice: number; // average daily selling revenue
   reorderThreshold: number; // gallons - trigger alert below this
   lastDeliveryDate: string;
   nextDeliveryDate?: string;
@@ -176,10 +179,10 @@ export const FUEL_GRADE_LABELS: Record<FuelGrade, string> = {
 };
 
 export const FUEL_GRADE_COLORS: Record<FuelGrade, string> = {
-  regular: '#22c55e', // green
-  plus: '#3b82f6', // blue
-  premium: '#8b5cf6', // purple
-  diesel: '#f59e0b', // amber
+  regular: '#0B1932', // modisoft-blue
+  plus: '#3b82f6', // blue (unused)
+  premium: '#4DC1B4', // modisoft-turquoise
+  diesel: '#2E595A', // modisoft-teal
 };
 
 // ============== NEW ITEM SIMULATOR ==============

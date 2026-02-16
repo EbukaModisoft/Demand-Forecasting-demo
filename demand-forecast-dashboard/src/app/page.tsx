@@ -391,10 +391,9 @@ const BUSINESS_TOP_ITEMS: Record<BusinessType, TopItem[]> = {
 
 // ============== FUEL / GAS STATION CONFIG ==============
 const FUEL_TANKS: FuelTank[] = [
-  { grade: 'regular', capacity: 10000, currentLevel: 3200, pricePerGallon: 3.29, dailyAvgSales: 1800, reorderThreshold: 2500, lastDeliveryDate: '2026-02-07' },
-  { grade: 'plus', capacity: 6000, currentLevel: 4100, pricePerGallon: 3.59, dailyAvgSales: 450, reorderThreshold: 1500, lastDeliveryDate: '2026-02-07' },
-  { grade: 'premium', capacity: 6000, currentLevel: 4800, pricePerGallon: 3.99, dailyAvgSales: 380, reorderThreshold: 1500, lastDeliveryDate: '2026-02-07' },
-  { grade: 'diesel', capacity: 8000, currentLevel: 2100, pricePerGallon: 3.79, dailyAvgSales: 650, reorderThreshold: 2000, lastDeliveryDate: '2026-02-05' },
+  { grade: 'regular', label: 'Regular Unleaded', capacity: 10000, currentLevel: 5917, pricePerGallon: 3.29, profitPerGallon: 0.262, dailyAvgSales: 1800, averageSellingPrice: 2150, reorderThreshold: 2500, lastDeliveryDate: '2026-01-28' },
+  { grade: 'premium', label: 'Premium Unleaded', capacity: 6000, currentLevel: 4800, pricePerGallon: 3.99, profitPerGallon: 0.212, dailyAvgSales: 380, averageSellingPrice: 1700, reorderThreshold: 1500, lastDeliveryDate: '2026-02-01' },
+  { grade: 'diesel', label: 'Diesel', capacity: 8000, currentLevel: 5250, pricePerGallon: 3.79, profitPerGallon: 0.248, dailyAvgSales: 650, averageSellingPrice: 1950, reorderThreshold: 2000, lastDeliveryDate: '2026-01-14' },
 ];
 
 // Hourly traffic pattern (0-23 hours) - multiplier of base demand
@@ -433,20 +432,25 @@ function generateFuelDayForecast(date: string, weatherMultiplier: number = 1.0, 
   const totalGallons = hourlyDemand.reduce((sum, h) => sum + h.gallons, 0);
   const expectedTransactions = hourlyDemand.reduce((sum, h) => sum + h.transactions, 0);
   
-  // Distribution by grade (typical US split)
+  // Distribution by grade (no plus; blend into regular/premium)
   const byGrade: Record<FuelGrade, number> = {
-    regular: Math.round(totalGallons * 0.60), // 60% regular
-    plus: Math.round(totalGallons * 0.15),    // 15% plus
-    premium: Math.round(totalGallons * 0.13), // 13% premium
-    diesel: Math.round(totalGallons * 0.12),  // 12% diesel
+    regular: Math.round(totalGallons * 0.65), // 65% regular
+    plus: 0,
+    premium: Math.round(totalGallons * 0.20), // 20% premium
+    diesel: Math.round(totalGallons * 0.15),  // 15% diesel
   };
   
+  const priceByGrade = FUEL_TANKS.reduce<Record<string, number>>((acc, tank) => {
+    acc[tank.grade] = tank.pricePerGallon;
+    return acc;
+  }, {});
+
   // Calculate revenue
   const totalRevenue = 
-    byGrade.regular * FUEL_TANKS[0].pricePerGallon +
-    byGrade.plus * FUEL_TANKS[1].pricePerGallon +
-    byGrade.premium * FUEL_TANKS[2].pricePerGallon +
-    byGrade.diesel * FUEL_TANKS[3].pricePerGallon;
+    byGrade.regular * (priceByGrade.regular || 0) +
+    byGrade.plus * (priceByGrade.plus || 0) +
+    byGrade.premium * (priceByGrade.premium || 0) +
+    byGrade.diesel * (priceByGrade.diesel || 0);
   
   // Find peak hour
   const peakHour = hourlyDemand.reduce((max, h) => h.gallons > max.gallons ? h : max).hour;
@@ -578,7 +582,6 @@ export default function DemandForecastingPage() {
   const [startDate, setStartDate] = useState('2026-09-10');
   const [endDate, setEndDate] = useState('2026-09-20');
   const [forecastWindow, setForecastWindow] = useState<7 | 14 | 28>(14);
-  const [explainChanges, setExplainChanges] = useState(false);
   const [itemSearch, setItemSearch] = useState('');
   const [globalSearch, setGlobalSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
@@ -804,19 +807,30 @@ export default function DemandForecastingPage() {
 
   // Chart data transformation
   const chartData = useMemo(() => {
-    return filteredForecastData.map(point => ({
-      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      rawDate: point.date,
-      // Actual = past/current, Forecast = future. Keep them mutually exclusive so the
-      // series do not overlap/intertwine.
-      forecast: point.actualRevenue != null ? null : Math.round(point.forecastRevenue * combinedMultiplier),
-      actual: point.actualRevenue != null ? Math.round(point.actualRevenue * filterMultiplier) : null, // Actuals don't get scenario
-      forecastUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * combinedMultiplier),
-      actualUnits: point.actualUnits != null ? Math.round(point.actualUnits * filterMultiplier) : null,
-      // Baseline = original forecast WITHOUT scenario adjustments (for comparison)
-      baselineRevenue: point.actualRevenue != null ? null : Math.round(point.forecastRevenue * filterMultiplier),
-      baselineUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * filterMultiplier),
-    }));
+    return filteredForecastData.map(point => {
+      // Find any active forecast drivers for this date
+      const activeDrivers = INSIGHT_EVENTS.filter(
+        (evt) => point.date >= evt.dateRange[0] && point.date <= evt.dateRange[1]
+      );
+      const annotation = activeDrivers.length > 0
+        ? activeDrivers.map(d => d.label).join(' · ')
+        : null;
+
+      return {
+        date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        rawDate: point.date,
+        // Actual = past/current, Forecast = future. Keep them mutually exclusive so the
+        // series do not overlap/intertwine.
+        forecast: point.actualRevenue != null ? null : Math.round(point.forecastRevenue * combinedMultiplier),
+        actual: point.actualRevenue != null ? Math.round(point.actualRevenue * filterMultiplier) : null, // Actuals don't get scenario
+        forecastUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * combinedMultiplier),
+        actualUnits: point.actualUnits != null ? Math.round(point.actualUnits * filterMultiplier) : null,
+        // Baseline = original forecast WITHOUT scenario adjustments (for comparison)
+        baselineRevenue: point.actualRevenue != null ? null : Math.round(point.forecastRevenue * filterMultiplier),
+        baselineUnits: point.actualUnits != null ? null : Math.round(point.forecastUnits * filterMultiplier),
+        annotation,
+      };
+    });
   }, [filteredForecastData, filterMultiplier, combinedMultiplier]);
 
   // KPI calculations (forecasts affected by scenario, actuals not)
@@ -1070,6 +1084,7 @@ export default function DemandForecastingPage() {
   // Custom tooltip for charts
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const annotation = payload?.[0]?.payload?.annotation;
       return (
         <div className="bg-white p-3 rounded-xl shadow-xl border border-gray-100 backdrop-blur-sm" style={{ borderTop: '2px solid #4DC1B4' }}>
           <p className="font-semibold text-modisoft-blue text-sm mb-1.5">{label}</p>
@@ -1079,6 +1094,13 @@ export default function DemandForecastingPage() {
               {entry.name}: <strong>{entry.name.includes('Units') ? entry.value?.toLocaleString() : formatCurrency(entry.value || 0)}</strong>
             </p>
           ))}
+          {annotation && (
+            <div className="mt-2 pt-2 border-t border-gray-100">
+              <p className="text-xs text-modisoft-blue">
+                <span className="font-semibold">Drivers:</span> {annotation}
+              </p>
+            </div>
+          )}
         </div>
       );
     }
@@ -1530,16 +1552,33 @@ export default function DemandForecastingPage() {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Explain Changes Checkbox */}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={explainChanges}
-                  onChange={(e) => setExplainChanges(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
-                />
-                <span className="text-sm text-gray-600">Explain changes</span>
-              </label>
+              <div className="flex items-center gap-2">
+                {isScenarioActive && (
+                  <span className="px-2 py-1 bg-modisoft-turquoise/15 text-modisoft-teal text-xs font-medium rounded-full border border-modisoft-turquoise/20">
+                    Scenario active
+                  </span>
+                )}
+                <button 
+                  onClick={() => setIsNewItemOpen(true)}
+                  className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                  Test New Item
+                </button>
+                <button 
+                  onClick={() => setIsScenarioOpen(true)}
+                  className="bg-modisoft-teal hover:bg-modisoft-blue text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                >
+                  Edit Scenario
+                </button>
+                <button 
+                  onClick={() => setIsExecutionOpen(true)}
+                  className="bg-modisoft-green hover:bg-modisoft-green/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 text-shadow-sm"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
+                  {activePlan ? 'Execution Board' : 'Lock Plan'}
+                </button>
+              </div>
 
               {/* Filter by item name */}
               <div className="relative">
@@ -1831,13 +1870,6 @@ export default function DemandForecastingPage() {
                       connectNulls={false}
                       dot={{ r: 4, fill: '#F8BC2E', strokeWidth: 0 }}
                     />
-                    {explainChanges && (
-                      <>
-                        <ReferenceLine x="Sep 14" stroke="#4DC1B4" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Heat wave: +3% for cold drinks/ice', position: 'top', fill: '#4DC1B4', fontSize: 10 }} />
-                        <ReferenceLine x="Sep 15" stroke="#F8BC2E" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Today +1% vs typical', position: 'top', fill: '#F8BC2E', fontSize: 10 }} />
-                        <ReferenceLine x="Sep 17" stroke="#8B5CF6" strokeWidth={1} strokeDasharray="3 3" label={{ value: 'Snacks promo +8%', position: 'top', fill: '#8B5CF6', fontSize: 10 }} />
-                      </>
-                    )}
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -1944,76 +1976,183 @@ export default function DemandForecastingPage() {
                   </div>
                 </div>
 
-                {/* Tank Levels + Insights Row */}
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  {/* Tank Level Gauges */}
-                  <div className="col-span-2 bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-semibold text-gray-900">Tank Levels</h3>
-                      <button className="text-modisoft-turquoise text-sm font-medium hover:text-modisoft-teal">Schedule Delivery →</button>
-                    </div>
-                    <div className="grid grid-cols-4 gap-4">
-                      {fuelTanks.map((tank) => {
-                        const pct = Math.round((tank.currentLevel / tank.capacity) * 100);
-                        const daysLeft = tank.currentLevel / tank.dailyAvgSales;
-                        const isLow = tank.currentLevel <= tank.reorderThreshold;
-                        
-                        return (
-                          <div key={tank.grade} className="text-center">
-                            <div className="relative w-20 h-28 mx-auto mb-2">
-                              {/* Tank outline */}
-                              <div className="absolute inset-0 rounded-lg border-2 border-gray-300 bg-gray-100 overflow-hidden">
-                                {/* Fill level */}
-                                <div 
-                                  className={`absolute bottom-0 left-0 right-0 transition-all ${
-                                    isLow ? 'bg-red-400' : pct < 50 ? 'bg-amber-400' : 'bg-emerald-400'
-                                  }`}
-                                  style={{ height: `${pct}%` }}
-                                />
-                                {/* Grade badge */}
-                                <div 
-                                  className="absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 border-white"
-                                  style={{ backgroundColor: FUEL_GRADE_COLORS[tank.grade] }}
-                                />
+                {/* Fuel Inventory + Alerts */}
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-semibold text-gray-900">Fuel Inventory</h3>
+                    <button className="text-modisoft-turquoise text-sm font-medium hover:text-modisoft-teal transition-colors">Schedule Delivery →</button>
+                  </div>
+                  <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_1fr_240px] gap-4">
+                    {fuelTanks.map((tank) => {
+                      const pct = Math.round((tank.currentLevel / tank.capacity) * 100);
+                      const daysLeft = Math.round(tank.currentLevel / tank.dailyAvgSales);
+                      const isLow = tank.currentLevel <= tank.reorderThreshold;
+                      const fillColor = FUEL_GRADE_COLORS[tank.grade];
+                      const ullage = tank.capacity - tank.currentLevel;
+                      const fuelHeight = parseFloat((pct * 0.42).toFixed(1)); // proportional inches
+                      const deliveryDate = new Date(tank.lastDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                      // Tank SVG dimensions
+                      const svgW = 280;
+                      const svgH = 170;
+                      // The tank body capsule
+                      const tankX = 30;
+                      const tankY = 40;
+                      const tankW = 220;
+                      const tankH = 90;
+                      const tankR = 45; // radius for pill shape
+                      // Fill: bottom-up percentage inside the capsule
+                      const fillTop = tankY + tankH - (tankH * pct) / 100;
+
+                      // Animated wave paths (double-width for seamless CSS loop)
+                      const waveW = tankW * 2;
+                      const amp1 = 3, amp2 = 2;
+                      const wavePeriods = 6; // 3 per tankW → seamless at translateX(tankW)
+                      let wave1D = `M ${tankX} ${fillTop}`;
+                      let wave2D = `M ${tankX} ${fillTop}`;
+                      for (let px = 2; px <= waveW; px += 2) {
+                        const t = (px / waveW) * wavePeriods * 2 * Math.PI;
+                        wave1D += ` L ${tankX + px} ${fillTop + amp1 * Math.sin(t)}`;
+                        wave2D += ` L ${tankX + px} ${fillTop + amp2 * Math.sin(t + Math.PI / 3)}`;
+                      }
+                      const waveBottom = tankY + tankH + 5;
+                      wave1D += ` L ${tankX + waveW} ${waveBottom} L ${tankX} ${waveBottom} Z`;
+                      wave2D += ` L ${tankX + waveW} ${waveBottom} L ${tankX} ${waveBottom} Z`;
+
+                      return (
+                        <div
+                          key={tank.grade}
+                          className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow duration-300"
+                        >
+                          {/* Header */}
+                          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+                            <h4 className="font-bold text-gray-900">{tank.label}</h4>
+                            <span className="text-xs text-gray-400">{deliveryDate}</span>
+                          </div>
+
+                          {/* SVG Tank Illustration */}
+                          <div className="flex justify-center pb-2">
+                            <svg className="w-full max-w-[280px]" viewBox={`0 0 ${svgW} ${svgH}`} xmlns="http://www.w3.org/2000/svg">
+                              <defs>
+                                {/* Clip for liquid fill */}
+                                <clipPath id={`tank-clip-${tank.grade}`}>
+                                  <rect x={tankX} y={tankY} width={tankW} height={tankH} rx={tankR} ry={tankR} />
+                                </clipPath>
+                                {/* Highlight gradient */}
+                                <linearGradient id={`tank-shine-${tank.grade}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="white" stopOpacity="0.35" />
+                                  <stop offset="50%" stopColor="white" stopOpacity="0.08" />
+                                  <stop offset="100%" stopColor="black" stopOpacity="0.06" />
+                                </linearGradient>
+                                {/* Liquid gradient */}
+                                <linearGradient id={`fuel-grad-${tank.grade}`} x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={fillColor} stopOpacity="0.85" />
+                                  <stop offset="100%" stopColor={fillColor} stopOpacity="1" />
+                                </linearGradient>
+                              </defs>
+
+                              {/* Pipes / vents on top */}
+                              {/* Left pipe */}
+                              <rect x={95} y={16} width={14} height={28} rx={3} fill="#d1d5db" stroke="#b0b6bf" strokeWidth={1} />
+                              <rect x={91} y={12} width={22} height={8} rx={3} fill="#c0c5cd" stroke="#a8aeb8" strokeWidth={1} />
+                              {/* Right pipe */}
+                              <rect x={170} y={16} width={14} height={28} rx={3} fill="#d1d5db" stroke="#b0b6bf" strokeWidth={1} />
+                              <rect x={166} y={12} width={22} height={8} rx={3} fill="#c0c5cd" stroke="#a8aeb8" strokeWidth={1} />
+
+                              {/* Tank body — outer shell */}
+                              <rect
+                                x={tankX} y={tankY} width={tankW} height={tankH}
+                                rx={tankR} ry={tankR}
+                                fill="#f3f4f6" stroke="#d1d5db" strokeWidth={1.5}
+                              />
+
+                              {/* Animated liquid fill */}
+                              <g clipPath={`url(#tank-clip-${tank.grade})`}>
+                                <path d={wave1D} fill={`url(#fuel-grad-${tank.grade})`} className="fuel-wave-1" />
+                                <path d={wave2D} fill={fillColor} opacity={0.3} className="fuel-wave-2" />
+                              </g>
+
+                              {/* 3D shine overlay */}
+                              <rect
+                                x={tankX} y={tankY} width={tankW} height={tankH}
+                                rx={tankR} ry={tankR}
+                                fill={`url(#tank-shine-${tank.grade})`}
+                              />
+
+                              {/* Capacity label */}
+                              <text x={svgW / 2} y={tankY + 28} textAnchor="middle" fontSize="11" fill="#9ca3af" fontFamily="inherit">
+                                /{tank.capacity.toLocaleString()} GAL
+                              </text>
+                              {/* Current level */}
+                              <text x={svgW / 2} y={tankY + 55} textAnchor="middle" fontSize="22" fontWeight="bold" fill={pct > 55 ? 'white' : '#1f2937'} fontFamily="inherit">
+                                {tank.currentLevel.toLocaleString()}
+                              </text>
+
+                              {/* Support legs */}
+                              {/* Left leg */}
+                              <path d="M 72 130 L 64 152 L 80 152 Z" fill="#c0c5cd" stroke="#a8aeb8" strokeWidth={1} strokeLinejoin="round" />
+                              <rect x={60} y={150} width={24} height={4} rx={1} fill="#b0b6bf" />
+                              {/* Right leg */}
+                              <path d="M 208 130 L 200 152 L 216 152 Z" fill="#c0c5cd" stroke="#a8aeb8" strokeWidth={1} strokeLinejoin="round" />
+                              <rect x={196} y={150} width={24} height={4} rx={1} fill="#b0b6bf" />
+                            </svg>
+                          </div>
+
+                          {/* Stats below tank */}
+                          <div className="px-5 pb-4">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-400">Ullage</span>
+                                <span className="font-bold text-gray-900">{ullage.toLocaleString()} GAL</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-400">Fuel Height</span>
+                                <span className="font-bold text-gray-900">{fuelHeight}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-400">Days Left</span>
+                                <span className={`font-bold ${isLow ? 'text-red-600' : 'text-gray-900'}`}>
+                                  {daysLeft < 1 ? '< 1' : daysLeft}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-gray-400">Profit/Gal</span>
+                                <span className="font-bold" style={{ color: fillColor }}>${tank.profitPerGallon.toFixed(2)}</span>
                               </div>
                             </div>
-                            <p className="font-medium text-gray-900 text-sm">{FUEL_GRADE_LABELS[tank.grade]}</p>
-                            <p className="text-xs text-gray-500">{tank.currentLevel.toLocaleString()} / {tank.capacity.toLocaleString()} gal</p>
-                            <p className={`text-xs mt-1 ${isLow ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
-                              {daysLeft < 1 ? '< 1 day' : `~${daysLeft.toFixed(1)} days`}
-                            </p>
-                            <p className="text-sm font-semibold mt-1" style={{ color: FUEL_GRADE_COLORS[tank.grade] }}>${tank.pricePerGallon.toFixed(2)}</p>
+                            <div className="mt-2 pt-2 border-t border-gray-100 flex justify-between text-xs">
+                              <span className="text-gray-400">Avg Selling <span className="font-bold text-gray-900">${tank.averageSellingPrice.toLocaleString()}</span></span>
+                              <span className="text-gray-400">Price <span className="font-bold text-gray-900">${tank.pricePerGallon.toFixed(2)}/gal</span></span>
+                            </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                        </div>
+                      );
+                    })}
 
-                  {/* Fuel Insights */}
-                  <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-                    <h3 className="font-semibold text-gray-900 mb-3">Fuel Alerts</h3>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {fuelInsights.slice(0, 4).map((insight) => (
-                        <div 
-                          key={insight.id} 
-                          className={`p-3 rounded-lg border ${
+                    {/* Fuel Alerts — inline 4th column */}
+                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col gap-2.5 h-full">
+                      <h4 className="font-bold text-gray-900 text-sm">Fuel Alerts</h4>
+                      {fuelInsights.slice(0, 3).map((insight) => (
+                        <div
+                          key={insight.id}
+                          className={`p-2.5 rounded-lg border text-xs ${
                             insight.priority === 'high' ? 'bg-red-50 border-red-200' :
                             insight.priority === 'medium' ? 'bg-amber-50 border-amber-200' :
                             'bg-blue-50 border-blue-200'
                           }`}
                         >
-                          <div className="flex items-start gap-2">
-                            <span className="text-lg">
+                          <div className="flex items-start gap-1.5">
+                            <span className="text-sm leading-none mt-0.5">
                               {insight.type === 'tank_low' ? '⚠️' :
                                insight.type === 'rush_hour' ? '🚗' :
                                insight.type === 'cross_sell' ? '🛒' :
                                insight.type === 'price_alert' ? '💰' : '📊'}
                             </span>
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 text-sm">{insight.title}</p>
-                              <p className="text-xs text-gray-600 mt-0.5">{insight.description}</p>
+                              <p className="font-semibold text-gray-900 leading-tight">{insight.title}</p>
+                              <p className="text-gray-500 mt-0.5 line-clamp-2 leading-snug">{insight.description}</p>
                               {insight.actionLabel && (
-                                <button className="mt-2 px-2 py-1 bg-white hover:bg-gray-50 text-gray-700 text-xs font-medium rounded border">
+                                <button className="mt-1.5 px-2 py-0.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded border text-[11px]">
                                   {insight.actionLabel}
                                 </button>
                               )}
@@ -2030,7 +2169,7 @@ export default function DemandForecastingPage() {
                   <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm mb-4">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-gray-900">Today's Fuel Demand by Hour</h3>
+                        <h3 className="font-semibold text-gray-900">Fuel Demand by Hour – {new Date(fuelKpis.primaryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
                         <p className="text-xs text-gray-500">Rush hours highlighted • Adjust staffing accordingly</p>
                       </div>
                       <div className="flex items-center gap-4 text-xs">
@@ -2425,31 +2564,6 @@ export default function DemandForecastingPage() {
               <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">Top items next 14 days</h3>
                 <div className="flex items-center gap-2">
-                  {isScenarioActive && (
-                    <span className="px-2 py-1 bg-modisoft-turquoise/15 text-modisoft-teal text-xs font-medium rounded-full border border-modisoft-turquoise/20">
-                      Scenario active
-                    </span>
-                  )}
-                  <button 
-                    onClick={() => setIsNewItemOpen(true)}
-                    className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
-                    Test New Item
-                  </button>
-                  <button 
-                    onClick={() => setIsScenarioOpen(true)}
-                    className="bg-modisoft-teal hover:bg-modisoft-blue text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                  >
-                    Edit Scenario
-                  </button>
-                  <button 
-                    onClick={() => setIsExecutionOpen(true)}
-                    className="bg-modisoft-green hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 text-shadow-sm"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                    {activePlan ? 'Execution Board' : 'Lock Plan'}
-                  </button>
                   <button className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">
                     <Settings className="w-4 h-4 text-gray-400" />
                   </button>
