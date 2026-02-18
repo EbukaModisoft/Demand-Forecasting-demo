@@ -29,8 +29,6 @@ import {
   AlertTriangle,
   CheckCircle,
   Sun,
-  LayoutDashboard,
-  LayoutList
 } from 'lucide-react';
 import {
   AreaChart,
@@ -55,7 +53,7 @@ import { ExecutionBoard } from '../components/ExecutionBoard';
 import { ActionNextStepModal } from '../components/ActionNextStepModal';
 
 // ============== TYPES ==============
-type BusinessType = 'convenience' | 'grocery' | 'liquor' | 'restaurant';
+type BusinessType = 'admin' | 'convenience' | 'grocery' | 'liquor' | 'restaurant';
 
 interface ForecastPoint {
   date: string;
@@ -88,7 +86,6 @@ interface Employee {
   hourlyRate: number;
 }
 
-type ViewMode = 'briefing' | 'dashboard';
 
 interface InsightEvent {
   id: string;
@@ -170,6 +167,15 @@ const BUSINESS_PROFILES: Record<BusinessType, {
   todayVsTypical: number;
   dataHealthScore: number;
 }> = {
+  admin: {
+    label: 'All Stores (Admin)',
+    baseRevenue: 1720,
+    baseUnits: 5280,
+    promoBoost: 7,
+    weatherImpact: 3,
+    todayVsTypical: -5,
+    dataHealthScore: 30,
+  },
   convenience: {
     label: 'Convenience Store',
     baseRevenue: 350,
@@ -214,6 +220,11 @@ const LABOR_CONFIG: Record<BusinessType, {
   unitLabel: string;
   baseSchedule: Record<number, number>;
 }> = {
+  admin: {
+    minutesPerUnit: 0.8,
+    unitLabel: 'transactions',
+    baseSchedule: { 0: 162, 1: 134, 2: 134, 3: 142, 4: 152, 5: 184, 6: 198 },
+  },
   convenience: {
     minutesPerUnit: 0.8,
     unitLabel: 'transactions',
@@ -238,6 +249,14 @@ const LABOR_CONFIG: Record<BusinessType, {
 
 // Sample employees for all business types (with phone numbers for tap-to-call)
 const EMPLOYEES: Record<BusinessType, Employee[]> = {
+  admin: [
+    // Roll-up: show managers from each store type
+    { id: 'a1', name: 'Marcus Johnson', phone: '555-0101', role: 'Manager', availability: [0,1,2,3,4,5,6], maxHoursPerWeek: 45, hourlyRate: 22 },
+    { id: 'a2', name: 'Robert Taylor', phone: '555-0201', role: 'Manager', availability: [0,1,2,3,4,5,6], maxHoursPerWeek: 45, hourlyRate: 24 },
+    { id: 'a3', name: 'James Walker', phone: '555-0301', role: 'Manager', availability: [0,1,2,3,4,5,6], maxHoursPerWeek: 45, hourlyRate: 25 },
+    { id: 'a4', name: 'Maria Santos', phone: '555-0401', role: 'Manager', availability: [0,1,2,3,4,5,6], maxHoursPerWeek: 45, hourlyRate: 26 },
+    { id: 'a5', name: 'Nicole Thomas', phone: '555-0208', role: 'Manager', availability: [1,2,3,4,5], maxHoursPerWeek: 40, hourlyRate: 23 },
+  ],
   convenience: [
     { id: 'e1', name: 'Marcus Johnson', phone: '555-0101', role: 'Manager', availability: [0,1,2,3,4,5,6], maxHoursPerWeek: 45, hourlyRate: 22 },
     { id: 'e2', name: 'Sarah Chen', phone: '555-0102', role: 'Cashier', availability: [1,2,3,4,5], maxHoursPerWeek: 35, hourlyRate: 15 },
@@ -351,6 +370,16 @@ const INSIGHT_EVENTS: InsightEvent[] = [
 ];
 
 const BUSINESS_TOP_ITEMS: Record<BusinessType, TopItem[]> = {
+  admin: [
+    // Rolled-up top items across all store types
+    { id: 'a1', name: 'Bottled Water', department: 'Beverages', forecastRevenue: 1760, forecastUnits: 380, price: 2.49, isPromoActive: true },
+    { id: 'a2', name: 'Organic Milk', department: 'Dairy', forecastRevenue: 1250, forecastUnits: 320, price: 4.99, isPromoActive: true },
+    { id: 'a3', name: 'Signature Burger', department: 'Entrees', forecastRevenue: 2180, forecastUnits: 185, price: 12.99, isPromoActive: true },
+    { id: 'a4', name: "Tito's Vodka", department: 'Spirits', forecastRevenue: 2180, forecastUnits: 95, price: 24.99, isPromoActive: true },
+    { id: 'a5', name: 'Chicken Breast', department: 'Meat', forecastRevenue: 1540, forecastUnits: 190, price: 8.99, isPromoActive: true },
+    { id: 'a6', name: 'Modelo 12pk', department: 'Beer', forecastRevenue: 1540, forecastUnits: 110, price: 16.99, isPromoActive: true },
+    { id: 'a7', name: 'Grilled Salmon', department: 'Entrees', forecastRevenue: 1980, forecastUnits: 112, price: 18.99, isPromoActive: false },
+  ],
   convenience: [
     { id: 'c1', name: 'Bottled Water', department: 'Beverages', forecastRevenue: 880, forecastUnits: 190, price: 2.49, isPromoActive: true },
     { id: 'c2', name: 'Sparkling Water', department: 'Beverages', forecastRevenue: 880, forecastUnits: 190, price: 2.49, isPromoActive: false },
@@ -388,6 +417,21 @@ const BUSINESS_TOP_ITEMS: Record<BusinessType, TopItem[]> = {
     { id: 'r7', name: 'Kids Meal', department: 'Kids', forecastRevenue: 680, forecastUnits: 145, price: 7.99, isPromoActive: true },
   ],
 };
+
+// Admin aggregates all store types
+BUSINESS_TOP_ITEMS.admin = [
+  ...BUSINESS_TOP_ITEMS.convenience,
+  ...BUSINESS_TOP_ITEMS.grocery,
+  ...BUSINESS_TOP_ITEMS.liquor,
+  ...BUSINESS_TOP_ITEMS.restaurant,
+].map((item, i) => ({ ...item, id: `admin-${i}` }));
+
+EMPLOYEES.admin = [
+  ...EMPLOYEES.convenience,
+  ...EMPLOYEES.grocery,
+  ...EMPLOYEES.liquor,
+  ...EMPLOYEES.restaurant,
+].map((emp, i) => ({ ...emp, id: `admin-${i}` }));
 
 // ============== FUEL / GAS STATION CONFIG ==============
 const FUEL_TANKS: FuelTank[] = [
@@ -486,6 +530,12 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
         description: `${Math.round(tank.currentLevel).toLocaleString()} gal remaining (~${daysUntilEmpty.toFixed(1)} days). Reorder now.`,
         actionLabel: 'Schedule Delivery',
         expectedImpact: 'Avoid stockout',
+        tips: [
+          `You sell ~${tank.dailyAvgSales.toLocaleString()} gal/day of ${FUEL_GRADE_LABELS[tank.grade]} — at this rate you'll run out in ${daysUntilEmpty.toFixed(1)} days.`,
+          `A stockout typically costs $800-$1,200/day in lost fuel + in-store revenue.`,
+          `Schedule delivery for ${daysUntilEmpty < 2 ? 'today — emergency load' : 'tomorrow morning before rush hour'}.`,
+          `Consider ordering extra: weekend demand is usually 15-20% higher.`,
+        ],
       });
     }
   });
@@ -500,8 +550,14 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
       priority: 'medium',
       title: 'Morning rush: extra pump traffic',
       description: `Expecting ${morningTransactions} fuel transactions 7-9 AM. Consider opening register early.`,
-      actionLabel: 'Adjust Schedule',
+      actionLabel: 'View Tips',
       expectedImpact: '+$120 in-store sales',
+      tips: [
+        `${morningTransactions} fuel customers between 7-9 AM — your #1 window for in-store conversion.`,
+        `Open the 2nd register by 6:45 AM to avoid checkout lines that drive customers away.`,
+        `Stock the grab-and-go cooler tonight: water, energy drinks, and breakfast sandwiches sell 3x during morning rush.`,
+        `Place a pump-topper sign promoting today's coffee deal — 28% of morning fuel customers buy coffee when reminded.`,
+      ],
     });
   }
   
@@ -515,8 +571,14 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
       priority: 'medium',
       title: 'Evening commute: peak pump time',
       description: `Expecting ${eveningTransactions} transactions 4-6 PM. Stock grab-and-go cooler.`,
-      actionLabel: 'Prep Station',
+      actionLabel: 'View Tips',
       expectedImpact: '+$95 cross-sell',
+      tips: [
+        `${eveningTransactions} evening transactions — commuters grab snacks, drinks, and tobacco on the way home.`,
+        `Restock the beer cooler and single-serve chips before 3:30 PM.`,
+        `Move the "2 for $3" snack display closer to the register — impulse buys spike 40% during PM rush.`,
+        `If you have a roller grill, drop fresh items at 3:45 PM so they're ready by 4.`,
+      ],
     });
   }
   
@@ -530,6 +592,13 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
     description: `${conversionPct}% of fuel customers buy inside. Display coffee & snacks at pump sightline.`,
     actionLabel: 'View Tips',
     expectedImpact: `+${Math.round(todayForecast.expectedTransactions * 0.05 * 8)} potential`,
+    tips: [
+      `Only ${conversionPct}% of your fuel customers walk inside — industry top performers hit 45-50%.`,
+      `Add a pump-side sign: "Fresh coffee $1.49" — visual cues at the pump increase walk-ins by 12%.`,
+      `Place fountain drinks and snack endcaps within 10 feet of the entrance door.`,
+      `Run a fuel loyalty tie-in: "Buy inside, save 5¢/gal next fill" — proven to lift walk-ins by 18%.`,
+      `Estimated opportunity: ~$${Math.round(todayForecast.expectedTransactions * 0.05 * 8)}/day in extra in-store revenue.`,
+    ],
   });
   
   return insights;
@@ -576,7 +645,6 @@ const KpiCard = ({
 // ============== MAIN COMPONENT ==============
 export default function DemandForecastingPage() {
   // State
-  const [viewMode, setViewMode] = useState<ViewMode>('briefing');
   const [businessType, setBusinessType] = useState<BusinessType>('convenience');
   const businessProfile = BUSINESS_PROFILES[businessType];
   const [startDate, setStartDate] = useState('2026-09-10');
@@ -596,6 +664,13 @@ export default function DemandForecastingPage() {
   // Filter state
   const [selectedStores, setSelectedStores] = useState<string[]>(['all']);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>(['all']);
+  const [showFuel, setShowFuel] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+  const toggleSection = (id: string) => setCollapsedSections(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
 
   // Scenario state
   const [scenarioInputs, setScenarioInputs] = useState<ScenarioInputs>(DEFAULT_SCENARIO_INPUTS);
@@ -606,17 +681,19 @@ export default function DemandForecastingPage() {
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [actionFilter, setActionFilter] = useState<'all' | 'open' | 'accepted' | 'done'>('all');
   const [nextStepAction, setNextStepAction] = useState<ActionItem | null>(null);
+  const [expandedTipId, setExpandedTipId] = useState<string | null>(null);
+  const [selectedLaborDay, setSelectedLaborDay] = useState<string | null>(null);
 
   // Generate forecast data
   const forecastData = useMemo(() => {
     return generateForecastData(28, businessProfile.baseRevenue, businessProfile.baseUnits);
   }, [businessType]);
 
-  // ===== FUEL STATION DATA (convenience store only) =====
+  // ===== FUEL STATION DATA (convenience store & admin) =====
   const fuelTanks = useMemo(() => FUEL_TANKS, []);
 
   const fuelPrimaryDate = useMemo(() => {
-    if (businessType !== 'convenience') return null;
+    if (businessType !== 'convenience' && businessType !== 'admin') return null;
 
     const todayStr = new Date().toISOString().split('T')[0];
     if (todayStr >= startDate && todayStr <= endDate) return todayStr;
@@ -626,7 +703,7 @@ export default function DemandForecastingPage() {
   }, [businessType, startDate, endDate]);
   
   const fuelForecast = useMemo(() => {
-    if (businessType !== 'convenience') return null;
+    if (businessType !== 'convenience' && businessType !== 'admin') return null;
 
     const start = new Date(`${startDate}T12:00:00`);
     const end = new Date(`${endDate}T12:00:00`);
@@ -953,8 +1030,8 @@ export default function DemandForecastingPage() {
       kpiData,
       scenarioInputs,
       currentDate: startDate,
-      fuelInsights: businessType === 'convenience' ? fuelInsights : undefined,
-      fuelPrimaryDate: businessType === 'convenience' ? (fuelKpis?.primaryDate ?? startDate) : undefined,
+      fuelInsights: (businessType === 'convenience' || businessType === 'admin') ? fuelInsights : undefined,
+      fuelPrimaryDate: (businessType === 'convenience' || businessType === 'admin') ? (fuelKpis?.primaryDate ?? startDate) : undefined,
     });
     setActions(generatedActions);
   }, [businessType, laborPlan, items, kpiData, scenarioInputs, startDate, fuelInsights, fuelKpis?.primaryDate]);
@@ -1162,6 +1239,7 @@ export default function DemandForecastingPage() {
                 aria-label="Business type"
                 style={{ colorScheme: 'dark' }}
               >
+                <option value="admin" className="bg-modisoft-blue text-white">👑 Admin (All Stores)</option>
                 <option value="convenience" className="bg-modisoft-blue text-white">Convenience</option>
                 <option value="grocery" className="bg-modisoft-blue text-white">Grocery/Retail</option>
                 <option value="liquor" className="bg-modisoft-blue text-white">Liquor</option>
@@ -1186,31 +1264,6 @@ export default function DemandForecastingPage() {
 
           {/* Right side */}
           <div className="flex items-center gap-3">
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-white/10 rounded-lg p-0.5">
-              <button
-                onClick={() => setViewMode('briefing')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'briefing' 
-                    ? 'bg-white text-modisoft-blue' 
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                <LayoutList className="w-4 h-4" />
-                Simple
-              </button>
-              <button
-                onClick={() => setViewMode('dashboard')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'dashboard' 
-                    ? 'bg-white text-modisoft-blue' 
-                    : 'text-white/70 hover:text-white'
-                }`}
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Dashboard
-              </button>
-            </div>
             <button className="bg-modisoft-turquoise hover:bg-modisoft-teal text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors">
               What's New
             </button>
@@ -1233,313 +1286,6 @@ export default function DemandForecastingPage() {
 
         {/* ===== MAIN CONTENT ===== */}
         <main className="p-6">
-          {viewMode === 'briefing' ? (
-            /* ================ SIMPLE BRIEFING VIEW ================ */
-            <div className="max-w-5xl mx-auto">
-              {/* Good Morning Header */}
-              <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                  Good morning! 👋
-                </h1>
-                <p className="text-lg text-gray-600">
-                  Here's what's happening at your {businessProfile.label.toLowerCase()} this week.
-                </p>
-              </div>
-
-              {/* Big Number Card */}
-              <div className="bg-gradient-to-br from-modisoft-blue to-modisoft-blue-light rounded-2xl p-8 mb-8 text-white shadow-xl">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-white/70 text-sm font-medium mb-2">Expected this week</p>
-                    <p className="text-5xl font-bold mb-3">${Math.round(kpiData.revenueForecast).toLocaleString()}</p>
-                    <p className="text-white/80 text-lg">
-                      {kpiData.todayVsTypical >= 0 ? (
-                        <span className="text-emerald-300">↑ {Math.abs(kpiData.todayVsTypical)}% better than usual</span>
-                      ) : (
-                        <span className="text-modisoft-yellow">↓ {Math.abs(kpiData.todayVsTypical)}% slower than usual</span>
-                      )}
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => setIsSunnyOpen(true)}
-                    className="flex items-center gap-2 bg-modisoft-yellow hover:bg-amber-500 text-gray-900 px-4 py-2 rounded-xl font-medium transition-colors"
-                  >
-                    <Image src="/sunny.png" alt="Sunny" width={20} height={20} />
-                    Ask Sunny why
-                  </button>
-                </div>
-              </div>
-
-              {/* Fuel Snapshot (Convenience stores) */}
-              {businessType === 'convenience' && fuelKpis && todayFuelForecast && (
-                <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">⛽</span>
-                      <h2 className="text-xl font-bold text-gray-900">Fuel Snapshot</h2>
-                      <span className="text-sm text-gray-500">
-                        {new Date(fuelKpis.primaryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} • {fuelKpis.rangeDays} day range
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setViewMode('dashboard')}
-                      className="text-modisoft-turquoise hover:text-modisoft-teal font-medium text-sm"
-                    >
-                      View details →
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Fuel revenue (range)</p>
-                      <p className="text-2xl font-bold text-gray-900">${fuelKpis.weekRevenue.toLocaleString()}</p>
-                      <p className="text-xs text-gray-400 mt-1">Avg ${Math.round(fuelKpis.weekRevenue / Math.max(1, fuelKpis.rangeDays)).toLocaleString()}/day</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Selected day gallons</p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {fuelKpis.todayGallons.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">Peak {fuelKpis.peakHour > 12 ? fuelKpis.peakHour - 12 : fuelKpis.peakHour}:00 {fuelKpis.peakHour >= 12 ? 'PM' : 'AM'}</p>
-                    </div>
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">In-store conversion</p>
-                      <p className="text-2xl font-bold text-gray-900">{fuelKpis.avgConversion}%</p>
-                      <p className="text-xs text-gray-400 mt-1">fuel → inside</p>
-                    </div>
-                    <div className={`rounded-xl p-4 border ${fuelKpis.lowTankCount > 0 ? 'bg-red-50 border-red-200' : 'bg-modisoft-green/10 border-modisoft-green/20'}`}>
-                      <p className="text-xs text-gray-500 mb-1">Tank alerts</p>
-                      <p className={`text-2xl font-bold ${fuelKpis.lowTankCount > 0 ? 'text-red-600' : 'text-modisoft-green'}`}>
-                        {fuelKpis.lowTankCount > 0 ? `${fuelKpis.lowTankCount} low` : 'All good'}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-1">reorder threshold</p>
-                    </div>
-                  </div>
-
-                  {fuelInsights.length > 0 && (
-                    <div className="flex items-center justify-between bg-modisoft-yellow/10 rounded-xl p-4 border border-modisoft-yellow/30">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">🚗</span>
-                        <div>
-                          <p className="font-bold text-gray-900">{fuelInsights[0].title}</p>
-                          <p className="text-sm text-gray-600">{fuelInsights[0].description}</p>
-                        </div>
-                      </div>
-                      {fuelInsights[0].actionLabel && (
-                        <button className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl font-medium transition-colors border border-modisoft-yellow/30">
-                          {fuelInsights[0].actionLabel}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Week at a Glance */}
-              <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Your Week at a Glance</h2>
-                <div className="grid grid-cols-7 gap-3">
-                  {laborPlan.slice(0, 7).map((day, i) => {
-                    const isToday = i === 0;
-                    const status = day.recommendation === 'Upstaff' ? 'busy' : day.recommendation === 'Downstaff' ? 'slow' : 'normal';
-                    return (
-                      <div 
-                        key={day.date}
-                        className={`relative rounded-xl p-4 text-center transition-all ${
-                          isToday ? 'ring-2 ring-modisoft-turquoise ring-offset-2' : ''
-                        } ${
-                          status === 'busy' ? 'bg-modisoft-green/10 border-2 border-modisoft-green/20' :
-                          status === 'slow' ? 'bg-modisoft-yellow/10 border-2 border-modisoft-yellow/30' :
-                          'bg-gray-50 border-2 border-gray-200'
-                        }`}
-                      >
-                        {isToday && (
-                          <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[10px] font-bold bg-modisoft-turquoise text-white px-2 py-0.5 rounded-full">TODAY</span>
-                        )}
-                        <p className="text-sm font-bold text-gray-900 mb-1">
-                          {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
-                        </p>
-                        <p className="text-2xl font-bold mb-1">
-                          {new Date(day.date).getDate()}
-                        </p>
-                        <div className={`inline-block w-3 h-3 rounded-full ${
-                          status === 'busy' ? 'bg-modisoft-green' :
-                          status === 'slow' ? 'bg-modisoft-yellow' :
-                          'bg-gray-400'
-                        }`} />
-                        <p className={`text-xs font-medium mt-1 ${
-                          status === 'busy' ? 'text-modisoft-green' :
-                          status === 'slow' ? 'text-modisoft-blue' :
-                          'text-gray-600'
-                        }`}>
-                          {status === 'busy' ? 'Busy' : status === 'slow' ? 'Slow' : 'Normal'}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex items-center justify-center gap-6 mt-4 text-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-modisoft-green" />
-                    <span className="text-gray-600">Busy day - need extra help</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-modisoft-yellow" />
-                    <span className="text-gray-600">Slow day - can reduce staff</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-gray-400" />
-                    <span className="text-gray-600">Normal day</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Needs Your Attention - Using Action Engine */}
-              <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5 text-modisoft-yellow" />
-                    <h2 className="text-xl font-bold text-gray-900">Needs Your Attention</h2>
-                  </div>
-                  {actionStats.openCount > 0 && (
-                    <span className="px-2 py-1 bg-modisoft-yellow/20 text-modisoft-blue rounded-full text-sm font-medium">
-                      {actionStats.openCount} items
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-3">
-                  {filteredActions.filter(a => a.status === 'open').slice(0, 4).map((action) => (
-                    <div 
-                      key={action.id} 
-                      className={`flex items-center justify-between rounded-xl p-4 border ${
-                        action.type === 'labor' ? 'bg-modisoft-blue/10 border-modisoft-blue/20' :
-                        action.type === 'event' ? 'bg-modisoft-blue/10 border-modisoft-blue/20' :
-                        action.type === 'promo' ? 'bg-modisoft-turquoise/10 border-modisoft-turquoise/20' :
-                        action.type === 'fuel' ? 'bg-modisoft-yellow/10 border-modisoft-yellow/30' :
-                        'bg-modisoft-green/10 border-modisoft-green/20'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          action.type === 'labor' ? 'bg-modisoft-blue text-white' :
-                          action.type === 'event' ? 'bg-modisoft-blue text-white' :
-                          action.type === 'promo' ? 'bg-modisoft-turquoise text-white' :
-                          action.type === 'fuel' ? 'bg-modisoft-yellow text-modisoft-blue' :
-                          'bg-modisoft-green text-white'
-                        }`}>
-                          <span className="text-2xl">
-                            {action.type === 'labor' ? '👥' : 
-                             action.type === 'event' ? '📅' : 
-                             action.type === 'promo' ? '🏷️' :
-                             action.type === 'fuel' ? '⛽' : '💰'}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-900">{action.title}</p>
-                          <p className="text-sm text-gray-600">{action.description}</p>
-                          <p className="text-xs text-gray-500 mt-1">{action.expectedValueLabel}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {action.suggestedEmployee && (
-                          <a 
-                            href={`tel:${action.suggestedEmployee.phone}`}
-                            className="flex items-center gap-2 bg-modisoft-turquoise hover:bg-modisoft-turquoise/90 text-white px-4 py-2 rounded-xl font-medium transition-colors"
-                          >
-                            <Phone className="w-4 h-4" />
-                            Call {action.suggestedEmployee.name.split(' ')[0]}
-                          </a>
-                        )}
-                        <button
-                          onClick={() => setNextStepAction(action)}
-                          className="px-4 py-2 bg-modisoft-blue hover:bg-modisoft-blue/90 text-white rounded-xl font-medium transition-colors"
-                        >
-                          Take Action
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-
-                  {actions.filter(a => a.status === 'open').length === 0 && (
-                    <div className="flex items-center gap-4 bg-modisoft-green/10 rounded-xl p-4 border border-modisoft-green/20">
-                      <CheckCircle className="w-8 h-8 text-modisoft-green" />
-                      <p className="font-medium text-modisoft-blue">All good! Nothing urgent needs your attention.</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Team This Week */}
-              <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Your Team This Week</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {EMPLOYEES[businessType].map((employee) => {
-                    const scheduledDays = laborPlan.filter(day => day.assignedEmployees.includes(employee.name)).length;
-                    return (
-                      <div key={employee.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-modisoft-teal flex items-center justify-center text-white font-bold">
-                            {employee.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-900 text-sm">{employee.name}</p>
-                            <p className="text-xs text-gray-500">{employee.role}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-gray-600">{scheduledDays} days scheduled</span>
-                          <a 
-                            href={`tel:${employee.phone}`}
-                            className="p-2 bg-white hover:bg-modisoft-turquoise/10 rounded-lg border border-gray-200 transition-colors"
-                            title={`Call ${employee.name}`}
-                          >
-                            <Phone className="w-4 h-4 text-modisoft-teal" />
-                          </a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Sunny's Tip */}
-              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-6 border border-amber-200 shadow-sm">
-                <div className="flex items-start gap-4">
-                  <div className="p-2 bg-white rounded-xl shadow-sm">
-                    <Image src="/sunny.png" alt="Sunny" width={40} height={40} />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 mb-2">Sunny's Tip of the Day</h3>
-                    <p className="text-gray-700 mb-4">
-                      {businessType === 'restaurant' && "Valentine's Day is coming up! Consider taking reservations now - restaurants typically see 40% more traffic that week."}
-                      {businessType === 'liquor' && "Super Bowl Sunday is around the corner! Stock up on beer, chips, and party supplies - it's one of the biggest sales days of the year."}
-                      {businessType === 'convenience' && "Energy drinks and coffee sell 25% better on Monday mornings. Make sure they're stocked and visible at the front!"}
-                      {businessType === 'grocery' && "Weekend shoppers buy 30% more than weekday shoppers. Schedule your best staff for Saturday and Sunday."}
-                    </p>
-                    <button 
-                      onClick={() => setIsSunnyOpen(true)}
-                      className="text-amber-700 hover:text-amber-800 font-medium text-sm"
-                    >
-                      Tell me more →
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Action: Switch to Dashboard */}
-              <div className="mt-8 text-center">
-                <button 
-                  onClick={() => setViewMode('dashboard')}
-                  className="text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center gap-2 mx-auto"
-                >
-                  <LayoutDashboard className="w-4 h-4" />
-                  Want more details? Switch to Dashboard view
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* ================ DETAILED DASHBOARD VIEW ================ */
-            <>
           {/* Page Header Row */}
           <div className="flex items-start justify-between mb-6">
             <div>
@@ -1664,19 +1410,99 @@ export default function DemandForecastingPage() {
             />
           </div>
 
+          {/* ===== SUNNY'S TIP + WEEK AT A GLANCE ===== */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
+            {/* Sunny's Tip Card */}
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200 shadow-sm flex items-center gap-3">
+              <div className="p-1.5 bg-white rounded-lg shadow-sm flex-shrink-0">
+                <Image src="/sunny.png" alt="Sunny" width={28} height={28} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900 text-sm mb-0.5">Sunny&apos;s Tip</h3>
+                <p className="text-gray-700 text-xs leading-snug line-clamp-2">
+                  {businessType === 'admin' && "Across all your stores, weekends drive 30% more revenue. Coordinate promotions across locations."}
+                  {businessType === 'restaurant' && "Valentine's Day is coming up! Consider taking reservations now - 40% more traffic that week."}
+                  {businessType === 'liquor' && "Super Bowl Sunday is near! Stock up on beer, chips, and party supplies."}
+                  {businessType === 'convenience' && "Energy drinks and coffee sell 25% better on Monday mornings. Stock and display at front!"}
+                  {businessType === 'grocery' && "Weekend shoppers buy 30% more. Schedule your best staff for Saturday and Sunday."}
+                </p>
+                <button 
+                  onClick={() => setIsSunnyOpen(true)}
+                  className="text-amber-700 hover:text-amber-800 font-medium text-xs mt-1"
+                >
+                  Tell me more →
+                </button>
+              </div>
+            </div>
+
+            {/* Week at a Glance — spans 3 cols */}
+            <div className="lg:col-span-3 bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold text-gray-900">Your Week at a Glance</h2>
+                <div className="flex items-center gap-4 text-[11px]">
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-modisoft-green" />
+                    <span className="text-gray-500">Busy</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-modisoft-yellow" />
+                    <span className="text-gray-500">Slow</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 rounded-full bg-gray-400" />
+                    <span className="text-gray-500">Normal</span>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {laborPlan.slice(0, 7).map((day, i) => {
+                  const isToday = i === 0;
+                  const status = day.recommendation === 'Upstaff' ? 'busy' : day.recommendation === 'Downstaff' ? 'slow' : 'normal';
+                  return (
+                    <div 
+                      key={day.date}
+                      className={`relative rounded-lg px-2 py-2 text-center transition-all ${
+                        isToday ? 'ring-2 ring-modisoft-turquoise ring-offset-1' : ''
+                      } ${
+                        status === 'busy' ? 'bg-modisoft-green/10 border border-modisoft-green/20' :
+                        status === 'slow' ? 'bg-modisoft-yellow/10 border border-modisoft-yellow/30' :
+                        'bg-gray-50 border border-gray-200'
+                      }`}
+                    >
+                      {isToday && (
+                        <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 text-[8px] font-bold bg-modisoft-turquoise text-white px-1.5 py-0.5 rounded-full leading-none">TODAY</span>
+                      )}
+                      <p className="text-[11px] font-semibold text-gray-900">
+                        {new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' })}
+                      </p>
+                      <p className="text-lg font-bold leading-tight">
+                        {new Date(day.date).getDate()}
+                      </p>
+                      <div className={`inline-block w-2 h-2 rounded-full ${
+                        status === 'busy' ? 'bg-modisoft-green' :
+                        status === 'slow' ? 'bg-modisoft-yellow' :
+                        'bg-gray-400'
+                      }`} />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
           {/* ===== ACTION CENTER ===== */}
           <div className="mb-6">
             {/* Action Center Card */}
-            <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-modisoft-turquoise/15 rounded-lg">
-                    <AlertTriangle className="w-5 h-5 text-modisoft-teal" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900">Action Center</h3>
-                    <p className="text-xs text-gray-500">Recommendations based on your forecast</p>
-                  </div>
+            <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-modisoft-yellow" />
+                  <h3 className="text-sm font-bold text-gray-900">Suggested Actions Based on Forecast</h3>
+                  {actions.filter(a => a.status === 'open').length > 0 && (
+                    <span className="px-1.5 py-0.5 bg-modisoft-yellow/20 text-modisoft-blue rounded-full text-xs font-medium">
+                      {actions.filter(a => a.status === 'open').length}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-500">${actionStats.totalExpectedValue.toLocaleString()} potential</span>
@@ -1703,54 +1529,38 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
               
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {filteredActions.slice(0, 5).map((action) => (
+              <div className="space-y-2 max-h-[144px] overflow-y-auto">
+                {filteredActions.map((action) => (
                   <div 
                     key={action.id} 
-                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
-                      action.status === 'done' ? 'bg-emerald-50 border-emerald-200' :
-                      action.status === 'accepted' ? 'bg-blue-50 border-blue-200' :
-                      action.status === 'ignored' ? 'bg-gray-50 border-gray-200 opacity-60' :
-                      action.priority === 'high' ? 'bg-amber-50 border-amber-200' :
-                      'bg-white border-gray-200'
-                    }`}
+                    className="flex items-center justify-between rounded-lg px-3 py-2 border bg-gray-50 border-gray-200"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                        action.type === 'labor' ? 'bg-modisoft-blue/10 text-modisoft-blue' :
-                        action.type === 'promo' ? 'bg-modisoft-turquoise/15 text-modisoft-teal' :
-                        action.type === 'pricing' ? 'bg-modisoft-green/15 text-modisoft-teal' :
-                        action.type === 'fuel' ? 'bg-modisoft-yellow/15 text-modisoft-blue' :
-                        'bg-modisoft-turquoise/10 text-modisoft-teal'
-                      }`}>
-                        {action.type === 'labor' ? '👥' : action.type === 'promo' ? '🏷️' : action.type === 'pricing' ? '💰' : action.type === 'fuel' ? '⛽' : '📅'}
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-modisoft-blue/10">
+                        <span className="text-sm">
+                          {action.type === 'labor' ? '👥' : 
+                           action.type === 'event' ? '📅' : 
+                           action.type === 'promo' ? '🏷️' :
+                           action.type === 'fuel' ? '⛽' : '💰'}
+                        </span>
                       </div>
-                      <div>
-                        <p className="font-medium text-gray-900 text-sm">{action.title}</p>
-                        <p className="text-xs text-gray-500">{action.expectedValueLabel}</p>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm">{action.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{action.expectedValueLabel}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {action.status === 'open' && (
                         <>
-                          {action.suggestedEmployee && (
-                            <a 
-                              href={`tel:${action.suggestedEmployee.phone}`}
-                              className="px-2 py-1 bg-modisoft-turquoise hover:bg-modisoft-teal text-white text-xs font-medium rounded-lg flex items-center gap-1"
-                            >
-                              <Phone className="w-3 h-3" />
-                              Call
-                            </a>
-                          )}
                           <button
                             onClick={() => setNextStepAction(action)}
-                            className="px-2 py-1 bg-modisoft-teal hover:bg-modisoft-blue text-white text-xs font-medium rounded-lg"
+                            className="px-3 py-1.5 bg-modisoft-turquoise hover:bg-modisoft-teal text-white rounded-lg text-xs font-medium transition-colors"
                           >
-                            Accept
+                            Take Action
                           </button>
                           <button
                             onClick={() => handleActionUpdate(action.id, 'ignored')}
-                            className="px-2 py-1 text-gray-500 hover:text-gray-700 text-xs"
+                            className="px-3 py-1.5 text-gray-500 hover:text-gray-700 text-xs font-medium"
                           >
                             Skip
                           </button>
@@ -1759,7 +1569,7 @@ export default function DemandForecastingPage() {
                       {action.status === 'accepted' && (
                         <button
                           onClick={() => handleActionUpdate(action.id, 'done')}
-                          className="px-2 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-medium rounded-lg"
+                          className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-medium transition-colors"
                         >
                           Mark Done
                         </button>
@@ -1774,7 +1584,10 @@ export default function DemandForecastingPage() {
                   </div>
                 ))}
                 {filteredActions.length === 0 && (
-                  <p className="text-center text-gray-400 py-4 text-sm">No actions in this category</p>
+                  <div className="flex items-center gap-3 bg-modisoft-green/10 rounded-lg p-3 border border-modisoft-green/20">
+                    <CheckCircle className="w-5 h-5 text-modisoft-green" />
+                    <p className="font-medium text-modisoft-blue text-sm">All good! Nothing needs your attention.</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -1786,12 +1599,15 @@ export default function DemandForecastingPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Revenue forecast (before discounts)</h3>
-                <div className="flex items-center gap-4">
-                  <button className="text-gray-400 hover:text-gray-600 text-xs flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-gray-400 hover:text-gray-600 text-xs flex items-center gap-1"
+                    title="This chart shows forecasted revenue before discounts versus baseline and actuals."
+                    aria-label="Revenue forecast chart help"
+                  >
                     <Image src="/sunny.png" alt="Tip" width={12} height={12} className="w-3 h-3" />
                     Tip
                   </button>
-                  <Info className="w-4 h-4 text-gray-300" />
                 </div>
               </div>
               
@@ -1879,12 +1695,15 @@ export default function DemandForecastingPage() {
             <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Units Forecast</h3>
-                <div className="flex items-center gap-4">
-                  <button className="text-gray-400 hover:text-gray-600 text-xs flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    className="text-gray-400 hover:text-gray-600 text-xs flex items-center gap-1"
+                    title="This chart shows forecasted units sold versus baseline and actuals for the selected window."
+                    aria-label="Units forecast chart help"
+                  >
                     <Image src="/sunny.png" alt="Tip" width={12} height={12} className="w-3 h-3" />
                     Tip
                   </button>
-                  <Info className="w-4 h-4 text-gray-300" />
                 </div>
               </div>
 
@@ -1930,9 +1749,27 @@ export default function DemandForecastingPage() {
           </div>
 
           {/* ===== BUSINESS-TYPE WIDGETS ===== */}
-          {businessType === 'convenience' && fuelKpis && (
+          {showFuel && (businessType === 'convenience' || businessType === 'admin') && fuelKpis && (
             <>
               {/* ===== FUEL / GAS STATION SECTION ===== */}
+              {businessType === 'admin' && (
+                <div
+                  className="mb-4 bg-gradient-to-r from-modisoft-yellow/20 to-amber-50 rounded-xl border border-modisoft-yellow/30 p-4 cursor-pointer select-none"
+                  onClick={() => toggleSection('fuel')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">⛽</span>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg">Convenience Store — Fuel Station</h3>
+                        <p className="text-sm text-gray-600">Gas pump operations, tank levels, and forecourt traffic</p>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('fuel') ? '-rotate-90' : ''}`} />
+                  </div>
+                </div>
+              )}
+              {(!collapsedSections.has('fuel') || businessType !== 'admin') && (
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-2xl">⛽</span>
@@ -2102,12 +1939,12 @@ export default function DemandForecastingPage() {
                           <div className="px-5 pb-4">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                               <div className="flex items-center gap-1.5">
-                                <span className="text-gray-400">Ullage</span>
-                                <span className="font-bold text-gray-900">{ullage.toLocaleString()} GAL</span>
+                                <span className="text-gray-400">Daily Sales</span>
+                                <span className="font-bold text-gray-900">{tank.dailyAvgSales.toLocaleString()} GAL</span>
                               </div>
                               <div className="flex items-center gap-1.5">
-                                <span className="text-gray-400">Fuel Height</span>
-                                <span className="font-bold text-gray-900">{fuelHeight}</span>
+                                <span className="text-gray-400">Tank</span>
+                                <span className={`font-bold ${pct <= 25 ? 'text-red-600' : pct <= 50 ? 'text-amber-600' : 'text-gray-900'}`}>{pct}%</span>
                               </div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-gray-400">Days Left</span>
@@ -2152,9 +1989,22 @@ export default function DemandForecastingPage() {
                               <p className="font-semibold text-gray-900 leading-tight">{insight.title}</p>
                               <p className="text-gray-500 mt-0.5 line-clamp-2 leading-snug">{insight.description}</p>
                               {insight.actionLabel && (
-                                <button className="mt-1.5 px-2 py-0.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded border text-[11px]">
-                                  {insight.actionLabel}
+                                <button
+                                  onClick={() => setExpandedTipId(expandedTipId === insight.id ? null : insight.id)}
+                                  className="mt-1.5 px-2 py-0.5 bg-white hover:bg-gray-50 text-gray-700 font-medium rounded border text-[11px]"
+                                >
+                                  {expandedTipId === insight.id ? 'Hide' : insight.actionLabel}
                                 </button>
+                              )}
+                              {expandedTipId === insight.id && insight.tips && (
+                                <ul className="mt-2 space-y-1">
+                                  {insight.tips.map((tip, i) => (
+                                    <li key={i} className="flex items-start gap-1 text-[11px] text-gray-600 leading-snug">
+                                      <span className="text-modisoft-turquoise font-bold">•</span>
+                                      <span>{tip}</span>
+                                    </li>
+                                  ))}
+                                </ul>
                               )}
                             </div>
                           </div>
@@ -2267,10 +2117,31 @@ export default function DemandForecastingPage() {
                   </div>
                 </div>
               </div>
+              )}
             </>
           )}
 
-          {businessType === 'grocery' && (
+          {(businessType === 'grocery' || businessType === 'admin') && (
+            <>
+              {businessType === 'admin' && (
+                <div
+                  className="mb-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-200 p-4 cursor-pointer select-none"
+                  onClick={() => toggleSection('grocery')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🛒</span>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg">Grocery Store</h3>
+                        <p className="text-sm text-gray-600">Inventory alerts, category risk, and stock management</p>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('grocery') ? '-rotate-90' : ''}`} />
+                  </div>
+                </div>
+              )}
+              {(!collapsedSections.has('grocery') || businessType !== 'admin') && (
+
             <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm mb-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-gray-900">Categories at Risk (next 48h)</h3>
@@ -2298,9 +2169,30 @@ export default function DemandForecastingPage() {
                 ))}
               </div>
             </div>
+              )}
+            </>
           )}
 
-          {businessType === 'liquor' && (
+          {(businessType === 'liquor' || businessType === 'admin') && (
+            <>
+              {businessType === 'admin' && (
+                <div
+                  className="mb-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-xl border border-purple-200 p-4 cursor-pointer select-none"
+                  onClick={() => toggleSection('liquor')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🍷</span>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg">Liquor Store</h3>
+                        <p className="text-sm text-gray-600">Weekend prep, bundle opportunities, and reorder tracking</p>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('liquor') ? '-rotate-90' : ''}`} />
+                  </div>
+                </div>
+              )}
+              {(!collapsedSections.has('liquor') || businessType !== 'admin') && (
             <div className="grid grid-cols-3 gap-6 mb-6">
               {/* Weekend Run-up Widget */}
               <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
@@ -2342,9 +2234,30 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
+              )}
+            </>
           )}
 
-          {businessType === 'restaurant' && (
+          {(businessType === 'restaurant' || businessType === 'admin') && (
+            <>
+              {businessType === 'admin' && (
+                <div
+                  className="mb-4 bg-gradient-to-r from-orange-50 to-red-50 rounded-xl border border-orange-200 p-4 cursor-pointer select-none"
+                  onClick={() => toggleSection('restaurant')}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🍽️</span>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg">Restaurant</h3>
+                        <p className="text-sm text-gray-600">Spoilage monitoring, prep tasks, and kitchen operations</p>
+                      </div>
+                    </div>
+                    <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${collapsedSections.has('restaurant') ? '-rotate-90' : ''}`} />
+                  </div>
+                </div>
+              )}
+              {(!collapsedSections.has('restaurant') || businessType !== 'admin') && (
             <div className="grid grid-cols-2 gap-6 mb-6">
               {/* Spoilage Risk Widget */}
               <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm">
@@ -2383,6 +2296,8 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
             </div>
+              )}
+            </>
           )}
 
           {/* ===== LABOR VS DEMAND PLANNER (ALL BUSINESS TYPES) ===== */}
@@ -2399,14 +2314,22 @@ export default function DemandForecastingPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 items-start">
-              <div className="col-span-2 h-52 bg-white/60 border border-modisoft-turquoise/15 rounded-lg p-3 shadow-sm">
+            <div className="grid grid-cols-3 gap-4 items-stretch">
+              <div className="col-span-2 min-h-52 bg-white/60 border border-modisoft-turquoise/15 rounded-lg p-3 shadow-sm">
                 <div className="flex items-center justify-between mb-2 text-xs text-gray-500 font-semibold">
-                  <span>Scheduled vs needed hours</span>
+                  <span>Scheduled vs needed hours <span className="text-modisoft-turquoise">(click a bar to expand details)</span></span>
                   <span className="text-gray-400">Per day</span>
                 </div>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={laborPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }} barGap={4}>
+                  <BarChart data={laborPlan} margin={{ top: 10, right: 10, left: -10, bottom: 0 }} barGap={4}
+                    onClick={(data: any) => {
+                      if (data?.activePayload?.[0]?.payload) {
+                        const row = data.activePayload[0].payload as LaborPlanRow;
+                        setSelectedLaborDay(prev => prev === row.date ? null : row.date);
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="dayLabel" tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} tickLine={false} axisLine={false} interval={0} angle={-12} dy={10} height={50} />
                     <YAxis tick={{ fontSize: 10, fill: '#94A3B8', fontWeight: 600 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}h`} />
@@ -2420,23 +2343,28 @@ export default function DemandForecastingPage() {
                           <div className="flex items-center justify-between text-gray-600"><span>Scheduled</span><span className="font-mono text-gray-900">{row.scheduledHours}h</span></div>
                           <div className="flex items-center justify-between text-gray-600 mt-1"><span>Delta</span><span className={`font-semibold ${row.deltaHours > 0 ? 'text-emerald-700' : row.deltaHours < 0 ? 'text-slate-700' : 'text-gray-800'}`}>{row.deltaHours > 0 ? `+${row.deltaHours}h` : `${row.deltaHours}h`}</span></div>
                           <p className="mt-2 text-[11px] text-modisoft-teal font-semibold">{row.recommendation}: {row.reason}</p>
-                          {row.assignedEmployees.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-gray-100">
-                              <p className="text-[10px] text-gray-500 font-semibold mb-1">ASSIGNED STAFF:</p>
-                              <p className="text-[11px] text-gray-700">{row.assignedEmployees.join(', ')}</p>
-                            </div>
-                          )}
-                          {row.suggestedEmployees.length > 0 && (
-                            <div className="mt-1">
-                              <p className="text-[10px] text-emerald-600 font-semibold mb-1">SUGGESTED TO ADD:</p>
-                              <p className="text-[11px] text-emerald-700">{row.suggestedEmployees.join(', ')}</p>
-                            </div>
-                          )}
+                          <p className="mt-1 text-[10px] text-gray-400 italic">Click to expand details</p>
                         </div>
                       );
                     }} />
-                    <Bar dataKey="scheduledHours" name="Scheduled" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="neededHours" name="Needed" fill="#2E595A" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="scheduledHours" name="Scheduled" fill="#cbd5e1" radius={[4, 4, 0, 0]}
+                      onClick={(data: any) => {
+                        if (data?.payload) {
+                          const row = data.payload as LaborPlanRow;
+                          setSelectedLaborDay(prev => prev === row.date ? null : row.date);
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
+                    <Bar dataKey="neededHours" name="Needed" fill="#2E595A" radius={[4, 4, 0, 0]}
+                      onClick={(data: any) => {
+                        if (data?.payload) {
+                          const row = data.payload as LaborPlanRow;
+                          setSelectedLaborDay(prev => prev === row.date ? null : row.date);
+                        }
+                      }}
+                      style={{ cursor: 'pointer' }}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -2479,41 +2407,87 @@ export default function DemandForecastingPage() {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-3 gap-3">
-              {laborPlan.slice(0, 6).map((row) => (
-                <div key={row.date} className="bg-white rounded-lg border border-gray-100 p-3 shadow-sm">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-gray-700">{row.dayLabel}</span>
-                    <span className={`px-2 py-0.5 rounded-full border text-[11px] ${row.recommendation === 'Upstaff' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : row.recommendation === 'Downstaff' ? 'bg-slate-50 text-slate-700 border-slate-200' : 'bg-gray-50 text-gray-700 border-gray-200'}`}>
-                      {row.recommendation}
-                    </span>
+            {/* Expandable Day Detail Panel (appears when a bar is clicked) */}
+            {selectedLaborDay && (() => {
+              const row = laborPlan.find(r => r.date === selectedLaborDay);
+              if (!row) return null;
+              return (
+                <div className="mt-4 bg-white rounded-lg border-2 border-modisoft-turquoise/30 p-4 shadow-md animate-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <h4 className="font-semibold text-gray-900 text-base">{row.dayLabel} — Staffing Details</h4>
+                      <span className={`px-2 py-0.5 rounded-full border text-xs font-semibold ${
+                        row.recommendation === 'Upstaff' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                        row.recommendation === 'Downstaff' ? 'bg-slate-50 text-slate-700 border-slate-200' :
+                        'bg-gray-50 text-gray-700 border-gray-200'
+                      }`}>
+                        {row.recommendation}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedLaborDay(null)}
+                      className="text-gray-400 hover:text-gray-600 p-1"
+                    >
+                      ✕
+                    </button>
                   </div>
-                  <div className="flex items-center justify-between mt-2 text-xs text-gray-600">
-                    <span>Needed: <strong className="text-gray-900">{row.neededHours}h</strong></span>
-                    <span>Sched: <strong className="text-gray-900">{row.scheduledHours}h</strong></span>
+
+                  <div className="grid grid-cols-4 gap-4 mb-3">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-[10px] uppercase text-gray-500 font-semibold mb-1">Needed Hours</p>
+                      <p className="text-xl font-bold text-gray-900">{row.neededHours}h</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-[10px] uppercase text-gray-500 font-semibold mb-1">Scheduled Hours</p>
+                      <p className="text-xl font-bold text-gray-900">{row.scheduledHours}h</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <p className="text-[10px] uppercase text-gray-500 font-semibold mb-1">Delta</p>
+                      <p className={`text-xl font-bold ${row.deltaHours > 0 ? 'text-emerald-600' : row.deltaHours < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                        {row.deltaHours > 0 ? '+' : ''}{row.deltaHours}h
+                      </p>
+                    </div>
+                    <div className="bg-modisoft-turquoise/5 rounded-lg p-3 border border-modisoft-turquoise/15">
+                      <p className="text-[10px] uppercase text-modisoft-teal font-semibold mb-1">Recommendation</p>
+                      <p className="text-sm font-semibold text-modisoft-blue">{row.reason}</p>
+                    </div>
                   </div>
-                  <p className="mt-2 text-[11px] text-modisoft-teal font-semibold leading-relaxed">{row.reason}</p>
-                  {row.assignedEmployees.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-50">
-                      <p className="text-[10px] text-gray-400 font-medium mb-1">Staff:</p>
-                      <div className="flex flex-wrap gap-1">
-                        {row.assignedEmployees.slice(0, 3).map((name, i) => (
-                          <span key={i} className="text-[10px] px-1 py-0.5 bg-modisoft-turquoise/10 text-modisoft-teal rounded">{name.split(' ')[0]}</span>
-                        ))}
-                        {row.assignedEmployees.length > 3 && (
-                          <span className="text-[10px] px-1 py-0.5 bg-gray-50 text-gray-500 rounded">+{row.assignedEmployees.length - 3}</span>
-                        )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {row.assignedEmployees.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase text-gray-500 font-semibold mb-2">Assigned Staff</p>
+                        <div className="flex flex-wrap gap-2">
+                          {row.assignedEmployees.map((name, i) => (
+                            <span key={i} className="flex items-center gap-2 px-2 py-1 bg-modisoft-turquoise/10 text-modisoft-teal rounded-lg text-xs font-medium">
+                              <span className="w-6 h-6 rounded-full bg-modisoft-teal text-white flex items-center justify-center text-[10px] font-bold">
+                                {name.split(' ').map(n => n[0]).join('')}
+                              </span>
+                              {name}
+                            </span>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {row.suggestedEmployees.length > 0 && (
-                    <div className="mt-1">
-                      <p className="text-[10px] text-emerald-500 font-medium">+ Add: {row.suggestedEmployees.map(n => n.split(' ')[0]).join(', ')}</p>
-                    </div>
-                  )}
+                    )}
+                    {row.suggestedEmployees.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase text-emerald-600 font-semibold mb-2">Suggested to Add</p>
+                        <div className="flex flex-wrap gap-2">
+                          {row.suggestedEmployees.map((name, i) => (
+                            <span key={i} className="flex items-center gap-2 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-lg text-xs font-medium border border-emerald-100">
+                              <span className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
+                                {name.split(' ').map(n => n[0]).join('')}
+                              </span>
+                              {name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
 
           {/* ===== BOTTOM ROW: INSIGHTS + TABLE ===== */}
@@ -2639,8 +2613,6 @@ export default function DemandForecastingPage() {
               </div>
             </div>
           </div>
-            </> /* End of Dashboard View */
-          )}
         </main>
       </div>
 
@@ -2773,6 +2745,25 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
 
+              {/* Fuel Station Toggle (Convenience / Admin only) */}
+              {(businessType === 'convenience' || businessType === 'admin') && (
+                <div className="bg-white rounded-xl p-4 shadow-sm">
+                  <label className="text-sm font-semibold text-gray-700 mb-3 block">Data Views</label>
+                  <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showFuel}
+                      onChange={(e) => setShowFuel(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
+                    />
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">⛽</span>
+                      <span className="text-sm text-gray-700">Fuel Station</span>
+                    </div>
+                  </label>
+                </div>
+              )}
+
               {/* Date Range Picker */}
               <div className="bg-white rounded-xl p-4 shadow-sm">
                 <label className="text-sm font-semibold text-gray-700 mb-3 block">Date Range</label>
@@ -2821,6 +2812,7 @@ export default function DemandForecastingPage() {
                 onClick={() => {
                   setSelectedStores(['all']);
                   setSelectedDepartments(['all']);
+                  setShowFuel(false);
                   setStartDate('2026-09-10');
                   setEndDate('2026-09-20');
                 }}

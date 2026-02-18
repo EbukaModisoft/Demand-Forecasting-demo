@@ -1,6 +1,6 @@
 export type Department = 'Grocery' | 'Snacks' | 'Beverages' | 'Household' | 'Personal Care';
 
-export type BusinessType = 'convenience' | 'grocery' | 'liquor' | 'restaurant';
+export type BusinessType = 'admin' | 'convenience' | 'grocery' | 'liquor' | 'restaurant';
 
 export interface DateRange {
   from: Date;
@@ -169,6 +169,7 @@ export interface FuelInsight {
   description: string;
   actionLabel?: string;
   expectedImpact?: string;
+  tips?: string[];
 }
 
 export const FUEL_GRADE_LABELS: Record<FuelGrade, string> = {

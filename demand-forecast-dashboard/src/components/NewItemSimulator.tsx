@@ -76,6 +76,7 @@ function calculateProjections(
   
   // Business type adjustments
   const businessMultipliers: Record<BusinessType, number> = {
+    admin: 1.2,
     convenience: 1.0,
     grocery: 1.4,
     liquor: 0.7,

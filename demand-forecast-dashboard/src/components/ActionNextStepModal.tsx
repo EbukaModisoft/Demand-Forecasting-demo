@@ -3,7 +3,6 @@
 import React, { useState, useMemo } from 'react';
 import {
   X,
-  Phone,
   MessageSquare,
   Send,
   CheckCircle,
@@ -282,15 +281,6 @@ export const ActionNextStepModal: React.FC<ActionNextStepModalProps> = ({
               <MessageSquare className="w-4 h-4" />
               Send Text Message
             </button>
-            {selectedEmployee && (
-              <a
-                href={`tel:${selectedEmployee.phone}`}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-modisoft-turquoise hover:bg-modisoft-turquoise/90 text-white rounded-xl font-semibold transition-all"
-              >
-                <Phone className="w-4 h-4" />
-                Call
-              </a>
-            )}
           </div>
         </>
       )}

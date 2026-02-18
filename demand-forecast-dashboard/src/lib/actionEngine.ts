@@ -64,7 +64,7 @@ export interface KpiData {
   dataHealthScore: number;
 }
 
-export type BusinessType = 'convenience' | 'grocery' | 'liquor' | 'restaurant';
+export type BusinessType = 'admin' | 'convenience' | 'grocery' | 'liquor' | 'restaurant';
 
 export interface ActionEngineInput {
   businessType: BusinessType;
@@ -362,7 +362,7 @@ function estimateFuelExpectedValue(insight: FuelInsight): number {
 
 function generateFuelActions(input: ActionEngineInput): ActionItem[] {
   const { fuelInsights, currentDate, fuelPrimaryDate, businessType } = input;
-  if (businessType !== 'convenience') return [];
+  if (businessType !== 'convenience' && businessType !== 'admin') return [];
   if (!fuelInsights || fuelInsights.length === 0) return [];
 
   const dueDate = fuelPrimaryDate ?? currentDate;
