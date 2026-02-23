@@ -126,7 +126,7 @@ export interface ForecastConfidence {
 }
 
 // ============== FUEL / GAS STATION ==============
-export type FuelGrade = 'regular' | 'plus' | 'premium' | 'diesel';
+export type FuelGrade = 'regular' | 'regular2' | 'plus' | 'midgrade' | 'premium' | 'diesel' | 'diesel2';
 
 export interface FuelTank {
   grade: FuelGrade;
@@ -173,17 +173,23 @@ export interface FuelInsight {
 }
 
 export const FUEL_GRADE_LABELS: Record<FuelGrade, string> = {
-  regular: 'Regular (87)',
+  regular: 'Regular Unleaded 1',
+  regular2: 'Regular Unleaded 2',
   plus: 'Plus (89)',
+  midgrade: 'Mid-grade Unleaded 2',
   premium: 'Premium (93)',
   diesel: 'Diesel',
+  diesel2: 'Diesel 2',
 };
 
 export const FUEL_GRADE_COLORS: Record<FuelGrade, string> = {
-  regular: '#0B1932', // modisoft-blue
-  plus: '#3b82f6', // blue (unused)
+  regular: '#4DC1B4', // modisoft-turquoise (light teal)
+  regular2: '#0B1932', // modisoft-blue (dark navy)
+  plus: '#3b82f6', // blue
+  midgrade: '#F8BC2E', // modisoft-yellow (gold)
   premium: '#4DC1B4', // modisoft-turquoise
   diesel: '#2E595A', // modisoft-teal
+  diesel2: '#3478C6', // medium blue
 };
 
 // ============== NEW ITEM SIMULATOR ==============

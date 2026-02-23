@@ -25,8 +25,8 @@ import {
   PacingDay, 
   WeeklyReviewSummary, 
   ActionItem, 
-  ScenarioInputs, 
-  PlanStatus 
+  PlanStatus,
+  DEFAULT_SCENARIO_INPUTS
 } from '../types';
 
 // ============== PROPS ==============
@@ -41,8 +41,6 @@ interface ExecutionBoardProps {
   actions: ActionItem[];
   onActionUpdate: (actionId: string, status: ActionItem['status']) => void;
   // Context
-  scenarioInputs: ScenarioInputs;
-  isScenarioActive: boolean;
   forecastedRevenue: number;
   forecastedUnits: number;
   pacingData: PacingDay[];
@@ -60,8 +58,6 @@ export const ExecutionBoard: React.FC<ExecutionBoardProps> = ({
   onUpdatePlanStatus,
   actions,
   onActionUpdate,
-  scenarioInputs,
-  isScenarioActive,
   forecastedRevenue,
   forecastedUnits,
   pacingData,
@@ -104,7 +100,7 @@ export const ExecutionBoard: React.FC<ExecutionBoardProps> = ({
       name: planName || `Plan ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
       status: 'approved',
       dateRange: { from: pacingData[0]?.date || '', to: pacingData[pacingData.length - 1]?.date || '' },
-      scenarioInputs,
+      scenarioInputs: DEFAULT_SCENARIO_INPUTS,
       approvedBy: 'Store Manager',
       notes: planNotes,
       forecastedRevenue,
@@ -238,9 +234,7 @@ export const ExecutionBoard: React.FC<ExecutionBoardProps> = ({
                       <div className="p-4 bg-gradient-to-br from-modisoft-blue/10 to-modisoft-blue/5 rounded-xl border border-modisoft-blue/20">
                         <p className="text-xs text-modisoft-blue font-medium">Revenue Forecast</p>
                         <p className="text-2xl font-bold text-modisoft-blue">${forecastedRevenue.toLocaleString()}</p>
-                        <p className="text-xs text-modisoft-blue/70 mt-1">
-                          {isScenarioActive ? 'Scenario-adjusted' : 'Baseline forecast'}
-                        </p>
+                        <p className="text-xs text-modisoft-blue/70 mt-1">Baseline forecast</p>
                       </div>
                       <div className="p-4 bg-gradient-to-br from-modisoft-turquoise/10 to-modisoft-turquoise/5 rounded-xl border border-modisoft-turquoise/20">
                         <p className="text-xs text-modisoft-teal font-medium">Units Forecast</p>
@@ -249,26 +243,6 @@ export const ExecutionBoard: React.FC<ExecutionBoardProps> = ({
                       </div>
                     </div>
                   </div>
-
-                  {/* Scenario Inputs Summary */}
-                  {isScenarioActive && (
-                    <div className="p-4 bg-modisoft-yellow/10 border border-modisoft-yellow/30 rounded-xl">
-                      <h4 className="text-xs font-semibold text-yellow-700 mb-2 flex items-center gap-1.5">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        Active Scenario Adjustments
-                      </h4>
-                      <div className="grid grid-cols-3 gap-2">
-                        {Object.entries(scenarioInputs).filter(([, v]) => v !== 0).map(([key, value]) => (
-                          <div key={key} className="text-xs">
-                            <span className="text-yellow-700">{key.replace(/Pct$/, '').replace(/([A-Z])/g, ' $1').trim()}: </span>
-                            <span className={`font-semibold ${value > 0 ? 'text-modisoft-green' : 'text-red-600'}`}>
-                              {value > 0 ? '+' : ''}{value}%
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Actions to commit */}
                   <div>
