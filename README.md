@@ -15,23 +15,17 @@ Tailored experiences for different business types, each with unique KPIs, logic,
 
 ### ⛽ Fuel Station Management (Exclusive)
 Complete dashboard for gas station operations:
-- **Real-time Tank Monitoring**: Visual gauges for Regular, Plus, Premium, and Diesel with reorder alerts.
+- **Real-time Tank Monitoring**: Backoffice-style vertical gauges for five tanks (Regular Unleaded 1/2, Diesel 1/2, Mid-grade) with reorder alerts.
 - **Rush Hour Forecasting**: Hourly demand charts highlighting peak traffic for better staffing.
 - **In-Store Conversion Tracking**: Predictive analytics showing how many fuel customers are likely to buy inside.
+- **Fuel Alerts**: Side-by-side alert card next to Fuel Inventory for quick delivery and staffing actions.
 
 ### 🛠️ Intelligent Action Center
 A recommendation engine that converts forecasts into tasks:
 - **Labor**: Automated upstaffing/downstaffing alerts with suggested employees and tap-to-call.
-- **Promotions**: Smart "What-if" promo suggestions based on upcoming demand gaps.
+- **Promotions**: Promo suggestions based on upcoming demand gaps.
 - **Pricing**: Dynamic pricing recommendations based on inventory velocity.
 - **Events/Weather**: Impact alerts for local events (games, concerts) and weather shifts.
-
-### 🧪 Scenario Compare (What-if Analysis)
-Interactive sliders to simulate business environment changes:
-- Adjust **Promo Lift**, **Weather Impact**, **Event Boost**, or **Manual Overrides**.
-- **Price Change Simulator**: Test how price increases or decreases affect demand.
-- **Baseline Comparison**: Visual "ghost line" on charts shows the original forecast vs. your scenario.
-- Real-time preview of Revenue and Units delta before applying changes.
 
 ### ✨ New Item Simulator
 A dedicated tool for testing new product launches before committing:
