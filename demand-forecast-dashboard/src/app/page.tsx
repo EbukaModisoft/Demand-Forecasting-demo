@@ -45,11 +45,12 @@ import {
   ReferenceLine,
   Cell
 } from 'recharts';
-import { DEFAULT_SCENARIO_INPUTS, ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS, ApprovedPlan, PacingDay, WeeklyReviewSummary } from '../types';
+import { ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS } from '../types';
 import { buildActions, calculateConfidence, updateActionStatus, getActionStats } from '../lib/actionEngine';
 import { NewItemSimulator } from '../components/NewItemSimulator';
-import { ExecutionBoard } from '../components/ExecutionBoard';
 import { ActionNextStepModal } from '../components/ActionNextStepModal';
+import { QuickOrderModal } from '../components/QuickOrderModal';
+import { SubstituteModal } from '../components/SubstituteModal';
 
 // ============== TYPES ==============
 type BusinessType = 'admin' | 'convenience' | 'grocery' | 'liquor' | 'restaurant';
@@ -663,8 +664,8 @@ export default function DemandForecastingPage() {
   const [isSunnyOpen, setIsSunnyOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
-  const [isExecutionOpen, setIsExecutionOpen] = useState(false);
-  const [activePlan, setActivePlan] = useState<ApprovedPlan | null>(null);
+  const [orderCategory, setOrderCategory] = useState<{category: string, expected: number, stock: number} | null>(null);
+  const [substituteCategory, setSubstituteCategory] = useState<{category: string} | null>(null);
   const [items, setItems] = useState(BUSINESS_TOP_ITEMS[businessType]);
   
   // Filter state
@@ -806,82 +807,6 @@ export default function DemandForecastingPage() {
   const combinedMultiplier = useMemo(() => {
     return Number(filterMultiplier.toFixed(2));
   }, [filterMultiplier]);
-
-  // ===== EXECUTION BOARD DATA =====
-  const pacingData: PacingDay[] = useMemo(() => {
-    return filteredForecastData.slice(0, forecastWindow).map((point) => {
-      const dateObj = new Date(point.date);
-      const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-      const forecast = Math.round(point.forecastRevenue * combinedMultiplier * filterMultiplier);
-      const forecastU = Math.round(point.forecastUnits * combinedMultiplier * filterMultiplier);
-      // Simulate actuals for past days (within ~5% variance)
-      const today = new Date();
-      const isPast = dateObj < today;
-      const variance = isPast ? Math.round((Math.random() * 10 - 4) * 10) / 10 : null;
-      const actual = isPast ? Math.round(forecast * (1 + (variance ?? 0) / 100)) : null;
-      const actualU = isPast ? Math.round(forecastU * (1 + (variance ?? 0) / 100)) : null;
-      return {
-        date: point.date,
-        dayLabel,
-        forecastRevenue: forecast,
-        actualRevenue: actual,
-        forecastUnits: forecastU,
-        actualUnits: actualU,
-        variance,
-        status: (isPast
-          ? (variance ?? 0) >= 2 ? 'ahead' : (variance ?? 0) >= -2 ? 'on_track' : 'behind'
-          : 'pending') as PacingDay['status'],
-      };
-    });
-  }, [filteredForecastData, forecastWindow, combinedMultiplier, filterMultiplier]);
-
-  const weeklyReview: WeeklyReviewSummary | null = useMemo(() => {
-    if (!activePlan) return null;
-    const completedDays = pacingData.filter(d => d.actualRevenue !== null);
-    if (completedDays.length < 3) return null; // need at least 3 days
-    const totalForecast = completedDays.reduce((s, d) => s + d.forecastRevenue, 0);
-    const totalActual = completedDays.reduce((s, d) => s + (d.actualRevenue ?? 0), 0);
-    const totalForecastU = completedDays.reduce((s, d) => s + d.forecastUnits, 0);
-    const totalActualU = completedDays.reduce((s, d) => s + (d.actualUnits ?? 0), 0);
-    const doneActions = actions.filter(a => a.status === 'done');
-    return {
-      planId: activePlan.id,
-      planName: activePlan.name,
-      dateRange: activePlan.dateRange,
-      forecastRevenue: totalForecast,
-      actualRevenue: totalActual,
-      revenueVariance: totalForecast > 0 ? Math.round(((totalActual - totalForecast) / totalForecast) * 1000) / 10 : 0,
-      forecastUnits: totalForecastU,
-      actualUnits: totalActualU,
-      unitsVariance: totalForecastU > 0 ? Math.round(((totalActualU - totalForecastU) / totalForecastU) * 1000) / 10 : 0,
-      actionsCompleted: doneActions.length,
-      actionsTotal: actions.length,
-      completedValue: doneActions.reduce((s, a) => s + a.expectedValue, 0),
-      highlights: [
-        totalActual > totalForecast ? `Revenue beat plan by $${(totalActual - totalForecast).toLocaleString()}` : 'Held close to plan despite market conditions',
-        doneActions.length > 0 ? `Completed ${doneActions.length} actions worth $${doneActions.reduce((s, a) => s + a.expectedValue, 0).toLocaleString()}` : null,
-      ].filter(Boolean) as string[],
-      lessonsLearned: [
-        totalActual < totalForecast ? 'Forecast ran slightly hot — consider tightening weather adjustments' : null,
-        actions.filter(a => a.status === 'open').length > 2 ? `${actions.filter(a => a.status === 'open').length} actions still pending — assign owners earlier next week` : null,
-        'Review promotion ROI to optimize next cycle',
-      ].filter(Boolean) as string[],
-    };
-  }, [activePlan, pacingData, actions]);
-
-  const handleApprovePlan = (plan: Omit<ApprovedPlan, 'id' | 'approvedAt' | 'actualRevenue' | 'actualUnits'>) => {
-    setActivePlan({
-      ...plan,
-      id: `plan-${Date.now()}`,
-      approvedAt: new Date().toLocaleString(),
-      actualRevenue: 0,
-      actualUnits: 0,
-    });
-  };
-
-  const handleUpdatePlanStatus = (planId: string, status: ApprovedPlan['status']) => {
-    setActivePlan(prev => prev && prev.id === planId ? { ...prev, status } : prev);
-  };
 
   // Chart data transformation
   const chartData = useMemo(() => {
@@ -1029,7 +954,6 @@ export default function DemandForecastingPage() {
       })),
       employees: EMPLOYEES[businessType],
       kpiData,
-      scenarioInputs: DEFAULT_SCENARIO_INPUTS,
       currentDate: startDate,
       fuelInsights: (businessType === 'convenience' || businessType === 'admin') ? fuelInsights : undefined,
       fuelPrimaryDate: (businessType === 'convenience' || businessType === 'admin') ? (fuelKpis?.primaryDate ?? startDate) : undefined,
@@ -1308,13 +1232,6 @@ export default function DemandForecastingPage() {
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
                   Test New Item
-                </button>
-                <button 
-                  onClick={() => setIsExecutionOpen(true)}
-                  className="bg-modisoft-green hover:bg-modisoft-green/90 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5 text-shadow-sm"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>
-                  {activePlan ? 'Execution Board' : 'Lock Plan'}
                 </button>
               </div>
 
@@ -2112,8 +2029,18 @@ export default function DemandForecastingPage() {
                       <span className="text-gray-500">Stock: <strong className="text-gray-900">{item.stockCanSell}</strong></span>
                       <span className={`font-medium ${item.hoursLeft < 12 ? 'text-red-600' : 'text-amber-600'}`}>{item.hoursLeft}h left</span>
                       <div className="flex gap-1">
-                        <button className="bg-modisoft-turquoise text-white px-2 py-1 rounded text-xs">Order</button>
-                        <button className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs">Substitute</button>
+                        <button 
+                          onClick={() => setOrderCategory({ category: item.category, expected: item.expected, stock: item.stockCanSell })}
+                          className="bg-modisoft-turquoise hover:bg-modisoft-teal transition-colors text-white px-2 py-1 rounded text-xs"
+                        >
+                          Order
+                        </button>
+                        <button 
+                          onClick={() => setSubstituteCategory({ category: item.category })}
+                          className="bg-gray-100 hover:bg-gray-200 transition-colors text-gray-700 px-2 py-1 rounded text-xs"
+                        >
+                          Substitute
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -2831,21 +2758,6 @@ export default function DemandForecastingPage() {
         baselineUnits={Math.round(kpiData.unitsForecast / (forecastWindow || 14))}
       />
 
-      {/* ===== EXECUTION BOARD ===== */}
-      <ExecutionBoard
-        isOpen={isExecutionOpen}
-        onClose={() => setIsExecutionOpen(false)}
-        activePlan={activePlan}
-        onApprovePlan={handleApprovePlan}
-        onUpdatePlanStatus={handleUpdatePlanStatus}
-        actions={actions}
-        onActionUpdate={(id, status) => setActions(prev => updateActionStatus(prev, id, status))}
-        forecastedRevenue={kpiData.revenueForecast}
-        forecastedUnits={kpiData.unitsForecast}
-        pacingData={pacingData}
-        weeklyReview={weeklyReview}
-      />
-
       {/* ===== ACTION NEXT-STEP MODAL ===== */}
       {nextStepAction && (
         <ActionNextStepModal
@@ -2863,6 +2775,18 @@ export default function DemandForecastingPage() {
           }))}
         />
       )}
+
+      {/* ===== INVENTORY MODALS ===== */}
+      <QuickOrderModal
+        isOpen={!!orderCategory}
+        onClose={() => setOrderCategory(null)}
+        categoryData={orderCategory}
+      />
+      <SubstituteModal
+        isOpen={!!substituteCategory}
+        onClose={() => setSubstituteCategory(null)}
+        categoryData={substituteCategory}
+      />
     </div>
   );
 }

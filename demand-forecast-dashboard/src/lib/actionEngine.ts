@@ -7,7 +7,6 @@ import {
   ActionItem, 
   ActionType, 
   ActionPriority,
-  ScenarioInputs,
   ForecastConfidence,
   ConfidenceLevel,
   FuelInsight
@@ -73,7 +72,6 @@ export interface ActionEngineInput {
   topItems: TopItem[];
   employees: Employee[];
   kpiData: KpiData;
-  scenarioInputs: ScenarioInputs;
   currentDate: string; // YYYY-MM-DD
 
   // Optional fuel insights (convenience stores / gas stations)
@@ -160,7 +158,7 @@ function generateLaborActions(input: ActionEngineInput): ActionItem[] {
 
 function generatePromoActions(input: ActionEngineInput): ActionItem[] {
   const actions: ActionItem[] = [];
-  const { topItems, insightEvents, currentDate, businessType, scenarioInputs } = input;
+  const { topItems, insightEvents, currentDate, businessType } = input;
 
   // Find items that could benefit from a promo based on events
   const upcomingEvents = insightEvents.filter(evt => 
@@ -419,31 +417,6 @@ export function buildActions(input: ActionEngineInput): ActionItem[] {
     if (priorityDiff !== 0) return priorityDiff;
     return b.expectedValue - a.expectedValue;
   });
-}
-
-// ============== SCENARIO MULTIPLIER ==============
-export function calculateScenarioMultiplier(inputs: ScenarioInputs): number {
-  const { 
-    promoLiftPct, 
-    weatherImpactPct, 
-    eventLiftPct, 
-    manualOverridePct,
-    priceImpactPct,
-    newItemImpactPct 
-  } = inputs;
-  
-  // Combine effects
-  const combinedPct = 
-    promoLiftPct + 
-    weatherImpactPct + 
-    eventLiftPct + 
-    manualOverridePct + 
-    priceImpactPct + 
-    newItemImpactPct;
-    
-  const cappedPct = Math.max(-50, Math.min(120, combinedPct)); // Cap at -50% to +120% for new item excitement
-  
-  return 1 + (cappedPct / 100);
 }
 
 // ============== CONFIDENCE CALCULATION ==============

@@ -56,25 +56,6 @@ export interface Scenario {
   changes: string[]; // description of changes
 }
 
-// ============== SCENARIO INPUTS ==============
-export interface ScenarioInputs {
-  promoLiftPct: number;      // -50 to +50
-  weatherImpactPct: number;  // -30 to +30
-  eventLiftPct: number;      // -20 to +50
-  manualOverridePct: number; // -50 to +50
-  priceImpactPct: number;    // -30 to +30 (price increase = negative demand, decrease = positive)
-  newItemImpactPct: number;  // -10 to +50 (new menu/product launch lift)
-}
-
-export const DEFAULT_SCENARIO_INPUTS: ScenarioInputs = {
-  promoLiftPct: 0,
-  weatherImpactPct: 0,
-  eventLiftPct: 0,
-  manualOverridePct: 0,
-  priceImpactPct: 0,
-  newItemImpactPct: 0,
-};
-
 // ============== ACTION SYSTEM ==============
 export type ActionType = 'labor' | 'promo' | 'pricing' | 'event' | 'fuel';
 export type ActionStatus = 'open' | 'accepted' | 'done' | 'ignored';
@@ -225,54 +206,4 @@ export const DEFAULT_NEW_ITEM_INPUT: NewItemInput = {
   isPromo: false,
   promoDiscountPct: 0,
 };
-
-// ============== EXECUTION / PLAN SYSTEM ==============
-export type PlanStatus = 'draft' | 'approved' | 'in_progress' | 'completed' | 'archived';
-
-export interface ApprovedPlan {
-  id: string;
-  name: string;
-  status: PlanStatus;
-  dateRange: { from: string; to: string }; // YYYY-MM-DD
-  scenarioInputs: ScenarioInputs;
-  approvedAt: string;
-  approvedBy: string;
-  notes: string;
-  // Snapshot at time of approval
-  forecastedRevenue: number;
-  forecastedUnits: number;
-  // Tracked actuals (filled as days pass)
-  actualRevenue: number;
-  actualUnits: number;
-  // Actions locked to this plan
-  actionIds: string[];
-}
-
-export interface PacingDay {
-  date: string;
-  dayLabel: string;
-  forecastRevenue: number;
-  actualRevenue: number | null;
-  forecastUnits: number;
-  actualUnits: number | null;
-  variance: number | null;     // % vs forecast
-  status: 'ahead' | 'on_track' | 'behind' | 'pending';
-}
-
-export interface WeeklyReviewSummary {
-  planId: string;
-  planName: string;
-  dateRange: { from: string; to: string };
-  forecastRevenue: number;
-  actualRevenue: number;
-  revenueVariance: number;     // %
-  forecastUnits: number;
-  actualUnits: number;
-  unitsVariance: number;       // %
-  actionsCompleted: number;
-  actionsTotal: number;
-  completedValue: number;
-  highlights: string[];
-  lessonsLearned: string[];
-}
 
