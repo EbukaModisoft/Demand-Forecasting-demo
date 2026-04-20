@@ -213,3 +213,64 @@ button:active {
 .card-elevated:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.04);
 }
+
+/* Pulse badge for urgent items */
+@keyframes urgentPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+.pulse-urgent {
+  animation: urgentPulse 2s ease-in-out infinite;
+}
+
+/* Subtle shimmer for loading or highlighting */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-bg {
+  background: linear-gradient(90deg, transparent 25%, rgba(77, 193, 180, 0.08) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Item row clickable hover */
+table tbody tr.cursor-pointer:hover td:first-child {
+  color: #2E595A;
+}
+
+/* Smooth toast transition */
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Better section dividers */
+.section-accent {
+  position: relative;
+}
+
+.section-accent::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #4DC1B4, #A4CF5C);
+}
+
+/* Interactive button ripple */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}

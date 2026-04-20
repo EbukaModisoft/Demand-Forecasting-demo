@@ -29,6 +29,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Sun,
+  Heart,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -46,11 +47,28 @@ import {
   Cell
 } from 'recharts';
 import { ActionItem, FuelTank, FuelDayForecast, FuelGrade, FuelInsight, FUEL_GRADE_LABELS, FUEL_GRADE_COLORS } from '../types';
+import { OperationsTodayView } from '../components/OperationsTodayView';
+import {
+  INVENTORY_KPI,
+  INVENTORY_ITEMS,
+  WHAT_YOU_CAN_SELL,
+  AUTO_REPLENISHMENT,
+  CYCLE_COUNT_ITEMS,
+  WASTE_LEDGER,
+  HEALTH_ACTIONS,
+  AT_RISK_ITEMS,
+} from '../lib/inventoryData';
 import { buildActions, calculateConfidence, updateActionStatus, getActionStats } from '../lib/actionEngine';
 import { NewItemSimulator } from '../components/NewItemSimulator';
 import { ActionNextStepModal } from '../components/ActionNextStepModal';
 import { QuickOrderModal } from '../components/QuickOrderModal';
 import { SubstituteModal } from '../components/SubstituteModal';
+import { ItemDetailModal } from '../components/ItemDetailModal';
+import type { ItemDetailData } from '../components/ItemDetailModal';
+import { FullItemTable } from '../components/FullItemTable';
+import { ItemOrderBuilder, OrderLine } from '../components/ItemOrderBuilder';
+import { CountWorksheet } from '../components/CountWorksheet';
+import type { InventoryItem } from '../types';
 
 // ============== TYPES ==============
 type BusinessType = 'admin' | 'convenience' | 'grocery' | 'liquor' | 'restaurant';
@@ -613,10 +631,14 @@ function generateFuelInsights(tanks: FuelTank[], todayForecast: FuelDayForecast)
 }
 
 // ============== SIDEBAR ICONS ==============
-const SidebarIcon = ({ icon: Icon, active = false, badge = false }: { icon: any; active?: boolean; badge?: boolean }) => (
-  <button className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
-    active ? 'bg-modisoft-turquoise/25 text-white shadow-[0_0_8px_rgba(77,193,180,0.15)]' : 'text-white/50 hover:bg-white/10 hover:text-white/90'
-  }`}>
+const SidebarIcon = ({ icon: Icon, active = false, badge = false, onClick, tooltip }: { icon: any; active?: boolean; badge?: boolean; onClick?: () => void; tooltip?: string }) => (
+  <button 
+    onClick={onClick}
+    title={tooltip}
+    className={`relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200 ${
+      active ? 'bg-modisoft-turquoise/25 text-white shadow-[0_0_8px_rgba(77,193,180,0.15)]' : 'text-white/50 hover:bg-white/10 hover:text-white/90'
+    }`}
+  >
     <Icon className="w-5 h-5" />
     {badge && (
       <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-modisoft-yellow rounded-full border-2 border-modisoft-blue" />
@@ -653,6 +675,9 @@ const KpiCard = ({
 // ============== MAIN COMPONENT ==============
 export default function DemandForecastingPage() {
   // State
+  const [activeView, setActiveView] = useState<'today' | 'forecasting'>('today');
+  const [stockSnapshotOpen, setStockSnapshotOpen] = useState(true);
+  const [healthScoreOpen, setHealthScoreOpen] = useState(false);
   const [businessType, setBusinessType] = useState<BusinessType>('convenience');
   const businessProfile = BUSINESS_PROFILES[businessType];
   const [startDate, setStartDate] = useState('2026-09-10');
@@ -672,6 +697,7 @@ export default function DemandForecastingPage() {
   const [selectedStores, setSelectedStores] = useState<string[]>(['all']);
   const [selectedDepartments, setSelectedDepartments] = useState<string[]>(['all']);
   const [showFuel, setShowFuel] = useState(false);
+  const [showLabor, setShowLabor] = useState(businessType !== 'convenience');
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
   const toggleSection = (id: string) => setCollapsedSections(prev => {
     const next = new Set(prev);
@@ -685,6 +711,60 @@ export default function DemandForecastingPage() {
   const [nextStepAction, setNextStepAction] = useState<ActionItem | null>(null);
   const [expandedTipId, setExpandedTipId] = useState<string | null>(null);
   const [selectedLaborDay, setSelectedLaborDay] = useState<string | null>(null);
+
+  // Toast notification state
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 3000);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Item detail modal state
+  const [itemDetailData, setItemDetailData] = useState<ItemDetailData | null>(null);
+  const [isItemDetailOpen, setIsItemDetailOpen] = useState(false);
+
+  // Inventory items state (mutable for inline count edits)
+  const [inventoryItems, setInventoryItems] = useState<Record<string, InventoryItem[]>>(() => ({ ...INVENTORY_ITEMS }));
+  const currentItems = inventoryItems[businessType] ?? INVENTORY_ITEMS[businessType];
+
+  // Tier 1: Order builder & Count worksheet modals
+  const [isOrderBuilderOpen, setIsOrderBuilderOpen] = useState(false);
+  const [orderBuilderInitial, setOrderBuilderInitial] = useState<OrderLine[]>([]);
+  const [isCountWorksheetOpen, setIsCountWorksheetOpen] = useState(false);
+
+  // Inventory count update handler
+  const handleCountUpdate = (itemId: string, newOnHand: number) => {
+    setInventoryItems(prev => ({
+      ...prev,
+      [businessType]: (prev[businessType] ?? INVENTORY_ITEMS[businessType]).map(item =>
+        item.id === itemId ? { ...item, onHand: newOnHand, lastCountDate: new Date().toISOString().split('T')[0] } : item
+      ),
+    }));
+  };
+
+  // Add single item to order builder
+  const handleAddToOrder = (item: InventoryItem) => {
+    const suggestedQty = Math.max(0, item.parLevel - item.onHand);
+    const cases = item.caseSize ? Math.ceil(suggestedQty / item.caseSize) : 1;
+    const qty = item.caseSize ? cases * item.caseSize : suggestedQty;
+    setOrderBuilderInitial([{ item, qty, cases }]);
+    setIsOrderBuilderOpen(true);
+  };
+
+  // Count worksheet submit handler
+  const handleCountsSubmitted = (updates: { itemId: string; newOnHand: number }[]) => {
+    setInventoryItems(prev => {
+      const updated = [...(prev[businessType] ?? INVENTORY_ITEMS[businessType])];
+      for (const u of updates) {
+        const idx = updated.findIndex(i => i.id === u.itemId);
+        if (idx >= 0) updated[idx] = { ...updated[idx], onHand: u.newOnHand, lastCountDate: new Date().toISOString().split('T')[0] };
+      }
+      return { ...prev, [businessType]: updated };
+    });
+  };
 
   // Generate forecast data
   const forecastData = useMemo(() => {
@@ -971,11 +1051,16 @@ export default function DemandForecastingPage() {
 
   // Filtered actions based on current tab
   const filteredActions = useMemo(() => {
-    if (actionFilter === 'all') {
-      return actions.filter(a => a.status !== 'done' && a.status !== 'ignored');
+    let filtered = actions;
+    // Hide labor actions when labor planner is toggled off
+    if (!showLabor) {
+      filtered = filtered.filter(a => a.type !== 'labor');
     }
-    return actions.filter(a => a.status === actionFilter);
-  }, [actions, actionFilter]);
+    if (actionFilter === 'all') {
+      return filtered.filter(a => a.status !== 'done' && a.status !== 'ignored');
+    }
+    return filtered.filter(a => a.status === actionFilter);
+  }, [actions, actionFilter, showLabor]);
 
   // Filter items by search
   const filteredItems = useMemo(() => {
@@ -1122,15 +1207,14 @@ export default function DemandForecastingPage() {
         
         {/* Navigation Icons */}
         <div className="flex flex-col gap-2 flex-1">
-          <SidebarIcon icon={Star} />
-          <SidebarIcon icon={Package} badge />
-          <SidebarIcon icon={ShoppingCart} />
-          <SidebarIcon icon={BarChart3} active />
-          <SidebarIcon icon={FileText} />
-          <SidebarIcon icon={Users} />
-          <SidebarIcon icon={Calendar} />
-          <SidebarIcon icon={TrendingUp} />
-          <SidebarIcon icon={Settings} />
+          <SidebarIcon icon={Star} onClick={() => setActiveView('today')} active={activeView === 'today'} tooltip="Today" />
+          <SidebarIcon icon={BarChart3} onClick={() => setActiveView('forecasting')} active={activeView === 'forecasting'} tooltip="Forecast" />
+          <SidebarIcon icon={ShoppingCart} tooltip="Orders" />
+          <SidebarIcon icon={FileText} tooltip="Reports" />
+          <SidebarIcon icon={Users} tooltip="Team" />
+          <SidebarIcon icon={Calendar} tooltip="Calendar" />
+          <SidebarIcon icon={TrendingUp} tooltip="Analytics" />
+          <SidebarIcon icon={Settings} tooltip="Settings" />
         </div>
 
         {/* Bottom icon */}
@@ -1161,7 +1245,7 @@ export default function DemandForecastingPage() {
               <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none z-10" />
               <select
                 value={businessType}
-                onChange={(e) => setBusinessType(e.target.value as BusinessType)}
+                onChange={(e) => { const bt = e.target.value as BusinessType; setBusinessType(bt); setShowLabor(bt !== 'convenience'); }}
                 className="appearance-none bg-white/15 hover:bg-white/20 text-white px-3 pr-9 py-1 rounded-full text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise [&>option]:bg-modisoft-blue [&>option]:text-white"
                 aria-label="Business type"
                 style={{ colorScheme: 'dark' }}
@@ -1215,16 +1299,49 @@ export default function DemandForecastingPage() {
         <main className="p-6">
           {/* Page Header Row */}
           <div className="flex items-start justify-between mb-6">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <div className="w-1 h-6 bg-modisoft-turquoise rounded-full" />
-                <h1 className="text-xl font-bold text-modisoft-blue">Demand Forecasting</h1>
+            <div className="max-w-3xl">
+              <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-modisoft-teal">
+                <span className="inline-block h-2 w-2 rounded-full bg-modisoft-turquoise" />
+                Demand + Inventory
               </div>
-              <p className="text-gray-500 text-sm ml-3">Before discounts &amp; promotions</p>
-              <p className="text-gray-500 text-sm ml-3">Track what's selling, forecast what's next, and optimize orders — all in one view.</p>
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-1 h-6 bg-modisoft-turquoise rounded-full" />
+                {/* View Toggle */}
+                <div className="flex items-center bg-white border border-gray-200 rounded-lg p-1">
+                  <button
+                    onClick={() => setActiveView('today')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                      activeView === 'today'
+                        ? 'bg-modisoft-blue text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setActiveView('forecasting')}
+                    className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${
+                      activeView === 'forecasting'
+                        ? 'bg-modisoft-blue text-white shadow-sm'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    Forecast
+                  </button>
+                </div>
+              </div>
+              <h1 className="ml-3 text-2xl font-bold text-modisoft-blue">
+                {activeView === 'today' ? 'What needs attention today' : 'Forecast, stock & demand drivers'}
+              </h1>
+              <p className="ml-3 mt-1 text-sm leading-6 text-gray-600">
+                {activeView === 'today'
+                  ? 'Start here first. This view combines forecast and stock to show the next best actions for the business.'
+                  : "Revenue forecast, inventory health, reorder guidance, and what's driving demand."}
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
+              {activeView === 'forecasting' && (
               <div className="flex items-center gap-2">
                 <button 
                   onClick={() => setIsNewItemOpen(true)}
@@ -1234,13 +1351,14 @@ export default function DemandForecastingPage() {
                   Test New Item
                 </button>
               </div>
+              )}
 
               {/* Filter by item name */}
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Filter by item name"
+                  placeholder={activeView === 'today' ? 'Search actions or items' : 'Filter by item name'}
                   value={itemSearch}
                   onChange={(e) => setItemSearch(e.target.value)}
                   className="pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm w-48 focus:outline-none focus:ring-2 focus:ring-modisoft-turquoise focus:border-transparent"
@@ -1264,6 +1382,23 @@ export default function DemandForecastingPage() {
             </div>
           </div>
 
+          {/* ===== TODAY VIEW ===== */}
+          {activeView === 'today' && (
+            <OperationsTodayView
+              businessType={businessType}
+              actions={actions}
+              kpiData={kpiData}
+              forecastWindow={forecastWindow}
+              onHandleAction={(action) => setNextStepAction(action)}
+              onDismissAction={(actionId) => handleActionUpdate(actionId, 'ignored')}
+              onReviewOrder={(category, expected, stock) => setOrderCategory({ category, expected, stock })}
+              onOpenSunny={() => setIsSunnyOpen(true)}
+              onShowToast={showToast}
+            />
+          )}
+
+          {/* ===== DEMAND FORECASTING VIEW ===== */}
+          {activeView === 'forecasting' && (<>
           {/* Forecast Window Toggle */}
           <div className="flex items-center gap-4 mb-6">
             <span className="text-sm text-gray-500">Forecast window:</span>
@@ -1312,12 +1447,81 @@ export default function DemandForecastingPage() {
               value={`${kpiData.todayVsTypical}%`}
               subtitle="Compared to a typical day"
             />
-            <KpiCard 
-              title="Data Issues"
-              value={`${kpiData.dataHealthScore}`}
-              subtitle="Items need review"
-            />
+            {/* Stock Health — original card style with click-to-expand */}
+            {(() => {
+              const score = INVENTORY_KPI[businessType].inventoryHealthScore;
+              const status = score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Risk';
+              const statusColor = score >= 70 ? 'bg-green-100 text-green-700' : score >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+              const barColor = score >= 70 ? 'bg-modisoft-green' : score >= 50 ? 'bg-modisoft-yellow' : 'bg-red-500';
+              return (
+                <div
+                  className="bg-white rounded-xl border border-gray-100/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative overflow-hidden cursor-pointer hover:shadow-md transition-all"
+                  onClick={() => setHealthScoreOpen(!healthScoreOpen)}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-modisoft-turquoise to-modisoft-green" />
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl font-bold text-modisoft-blue">{score}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${statusColor}`}>{status}</span>
+                  </div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Stock health</p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mb-1.5">
+                    <div className={`${barColor} h-1.5 rounded-full transition-all`} style={{ width: `${score}%` }} />
+                  </div>
+                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    Tap for tips
+                  </p>
+                </div>
+              );
+            })()}
           </div>
+
+          {/* Health Score Improvement Panel */}
+          {healthScoreOpen && (
+            <div className="mb-4 bg-white rounded-xl border-2 border-modisoft-turquoise/30 p-5 shadow-md animate-in slide-in-from-top-2">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Heart className="w-5 h-5 text-modisoft-turquoise" />
+                  <h3 className="font-bold text-gray-900 text-base">How to improve your stock health score</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                    INVENTORY_KPI[businessType].inventoryHealthScore >= 70 ? 'bg-green-100 text-green-700' :
+                    INVENTORY_KPI[businessType].inventoryHealthScore >= 50 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                  }`}>
+                    Currently {INVENTORY_KPI[businessType].inventoryHealthScore}/100
+                  </span>
+                </div>
+                <button onClick={() => setHealthScoreOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">Based on stock risk, slow-moving items, and count accuracy. Each action below adds points.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {HEALTH_ACTIONS.map((action, i) => (
+                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-modisoft-turquoise/5 transition-colors">
+                    <CheckCircle className="w-4 h-4 text-modisoft-turquoise flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-semibold text-modisoft-blue">{action.label}</p>
+                      <p className="text-xs text-modisoft-teal font-medium">{action.impact}</p>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-dashed border-modisoft-turquoise/30 bg-modisoft-turquoise/5">
+                  <AlertTriangle className="w-4 h-4 text-modisoft-yellow flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-modisoft-blue">Run a quick cycle count</p>
+                    <p className="text-xs text-modisoft-teal font-medium">+3 pts — fixes stale numbers</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 p-3 rounded-lg border border-dashed border-modisoft-turquoise/30 bg-modisoft-turquoise/5">
+                  <TrendingUp className="w-4 h-4 text-modisoft-green flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold text-modisoft-blue">Resolve {INVENTORY_KPI[businessType].itemsAtRisk} at-risk items</p>
+                    <p className="text-xs text-modisoft-teal font-medium">+{INVENTORY_KPI[businessType].itemsAtRisk * 2} pts — order or substitute</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ===== SUNNY'S TIP + WEEK AT A GLANCE ===== */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
@@ -1660,6 +1864,301 @@ export default function DemandForecastingPage() {
                 </ResponsiveContainer>
               </div>
             </div>
+          </div>
+
+          {/* ===== STOCK SNAPSHOT (merged from inventory) ===== */}
+          <div className="mb-6">
+            <button
+              onClick={() => setStockSnapshotOpen(!stockSnapshotOpen)}
+              className="w-full flex items-center justify-between bg-gradient-to-r from-modisoft-teal/5 to-modisoft-turquoise/5 hover:from-modisoft-teal/10 hover:to-modisoft-turquoise/10 border border-modisoft-turquoise/20 rounded-xl px-5 py-3 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <Package className="w-5 h-5 text-modisoft-teal" />
+                <div className="text-left">
+                  <h3 className="font-bold text-gray-900 text-base">Stock snapshot</h3>
+                  <p className="text-xs text-gray-500">Inventory health, reorder drafts, and count checks</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {INVENTORY_KPI[businessType].itemsAtRisk > 0 && (
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-bold">{INVENTORY_KPI[businessType].itemsAtRisk} at risk</span>
+                )}
+                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${stockSnapshotOpen ? '' : '-rotate-90'}`} />
+              </div>
+            </button>
+
+            {stockSnapshotOpen && (
+              <div className="mt-4 space-y-4">
+
+                {/* ===== ITEMS AT RISK — expandable list ===== */}
+                {AT_RISK_ITEMS[businessType].length > 0 && (
+                  <div className="bg-white rounded-xl shadow-sm border border-red-200 overflow-hidden">
+                    <div className="bg-gradient-to-r from-red-50 to-white px-5 py-3 border-b border-red-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className="w-4 h-4 text-red-500" />
+                          <h2 className="text-base font-bold text-gray-900">{AT_RISK_ITEMS[businessType].length} items need attention</h2>
+                          <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-[10px] font-bold">
+                            {AT_RISK_ITEMS[businessType].filter(i => i.risk === 'critical').length} critical
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500">Each row tells you what&apos;s wrong and how to fix it</p>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-50 max-h-[420px] overflow-y-auto">
+                      {AT_RISK_ITEMS[businessType].map((item, i) => (
+                        <div
+                          key={i}
+                          className={`flex items-center justify-between px-5 py-3 hover:bg-gray-50/50 cursor-pointer transition-colors ${item.risk === 'critical' ? 'border-l-3 border-l-red-400' : 'border-l-3 border-l-yellow-400'}`}
+                          onClick={() => { setItemDetailData({ name: item.name, department: item.department, onHand: item.onHand, forecastUnits: item.forecastNeed, status: item.risk === 'critical' ? 'used_up' : 'low_stock' } as ItemDetailData); setIsItemDetailOpen(true); }}
+                        >
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
+                            <span className={`flex-shrink-0 w-2 h-2 rounded-full ${item.risk === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}`} />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold text-modisoft-blue truncate">{item.name}</p>
+                                <span className="text-[10px] text-gray-400">{item.department}</span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-0.5">{item.reason}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">On hand: <span className="font-bold text-gray-900">{item.onHand}</span></p>
+                              <p className="text-xs text-gray-500">Need: <span className="font-bold text-gray-900">{item.forecastNeed}</span></p>
+                            </div>
+                            <div className={`text-right px-2 py-0.5 rounded text-[10px] font-bold ${item.daysLeft < 1 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                              {item.daysLeft < 1 ? `${Math.round(item.daysLeft * 24)}h left` : `${item.daysLeft.toFixed(1)}d left`}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (item.fixAction === 'order') setOrderCategory({ category: item.name, expected: item.forecastNeed, stock: item.onHand });
+                                else if (item.fixAction === 'substitute') setSubstituteCategory({ category: item.name });
+                                else showToast(`${item.fix} — ${item.name}`);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95 whitespace-nowrap ${
+                                item.fixAction === 'order' ? 'bg-modisoft-turquoise hover:bg-modisoft-teal text-white' :
+                                item.fixAction === 'substitute' ? 'bg-modisoft-blue text-white' :
+                                item.fixAction === 'discount' ? 'bg-modisoft-yellow hover:bg-amber-400 text-gray-900' :
+                                item.fixAction === 'count' ? 'bg-gray-200 hover:bg-gray-300 text-gray-700' :
+                                'bg-modisoft-green text-white'
+                              }`}
+                            >
+                              {item.fix}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* ===== INVENTORY ACTION BAR ===== */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button
+                    onClick={() => { setOrderBuilderInitial([]); setIsOrderBuilderOpen(true); }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-modisoft-teal hover:bg-modisoft-blue text-white rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                  >
+                    <ShoppingCart className="w-3.5 h-3.5" /> Build purchase order
+                  </button>
+                  <button
+                    onClick={() => setIsCountWorksheetOpen(true)}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-modisoft-yellow hover:bg-amber-400 text-gray-900 rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                  >
+                    <FileText className="w-3.5 h-3.5" /> Start count
+                  </button>
+                </div>
+
+                {/* ===== FULL ITEM INVENTORY TABLE ===== */}
+                <FullItemTable
+                  items={currentItems}
+                  onItemClick={(item) => {
+                    setItemDetailData({ name: item.name, department: item.department, onHand: item.onHand, forecastUnits: item.forecastNeed, status: item.coverageStatus === 'covered' ? 'covered' : item.coverageStatus === 'low_stock' ? 'low_stock' : 'used_up' } as ItemDetailData);
+                    setIsItemDetailOpen(true);
+                  }}
+                  onCountUpdate={handleCountUpdate}
+                  onAddToOrder={handleAddToOrder}
+                  showToast={showToast}
+                />
+
+                {/* Stock on Hand Chart */}
+                <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <h2 className="text-base font-bold text-gray-900 mb-4">Stock on hand</h2>
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={currentItems.map(item => ({ name: item.name, onHand: item.onHand }))} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          content={({ active, payload, label }: any) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-white p-3 rounded-xl shadow-xl border border-gray-100" style={{ borderTop: '2px solid #4DC1B4' }}>
+                                  <p className="font-semibold text-modisoft-blue text-sm mb-1">{label}</p>
+                                  <p className="text-sm text-gray-600">On hand: <strong>{payload[0].value}</strong></p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Bar dataKey="onHand" radius={[4, 4, 0, 0]} maxBarSize={40}>
+                          {currentItems.map((_, index) => (
+                            <Cell key={index} fill="#2E595A" />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <span className="w-3 h-3 rounded-sm bg-modisoft-teal" />
+                    <span className="text-xs text-gray-500">On hand</span>
+                  </div>
+                </div>
+
+                {/* Ready to sell today — horizontal scroll cards */}
+                <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <h2 className="text-base font-bold text-gray-900">Ready to sell today</h2>
+                    <p className="text-xs text-gray-500">Spot what is fine, running low, or needs shelf refill first.</p>
+                  </div>
+                  <div className="flex gap-4 overflow-x-auto pb-2 mt-3">
+                    {WHAT_YOU_CAN_SELL[businessType].map((item, i) => {
+                      const statusConfig = {
+                        covered: { label: 'Enough', bg: 'bg-modisoft-turquoise/10', border: 'border-modisoft-turquoise/30', text: 'text-modisoft-teal', dot: 'bg-modisoft-turquoise' },
+                        low_stock: { label: 'Running low', bg: 'bg-yellow-50', border: 'border-yellow-200', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+                        used_up: { label: 'Empty soon', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-600', dot: 'bg-red-500' },
+                      };
+                      const cfg = statusConfig[item.status];
+                      return (
+                        <div
+                          key={i}
+                          className={`rounded-xl border ${cfg.border} ${cfg.bg} p-4 min-w-[210px] cursor-pointer transition-all hover:shadow-md`}
+                          onClick={() => { setItemDetailData({ name: item.name, onHand: item.onHand, parLevel: item.parLevel, forecastUnits: item.forecast, status: item.status } as ItemDetailData); setIsItemDetailOpen(true); }}
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                            <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
+                          </div>
+                          <p className="font-semibold text-modisoft-blue text-sm mb-1">{item.name}</p>
+                          <p className="text-xs text-gray-500">Forecast: {item.forecast} &bull; On-Hand: {item.onHand}</p>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); showToast(`Stock check: bring ${item.name} up to ${item.parLevel}`); }}
+                            className="mt-3 w-full bg-modisoft-yellow hover:bg-amber-400 text-gray-900 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                          >
+                            Check stock: bring up to {item.parLevel}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Suggested Order Draft + Counts to Check */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Suggested Order Draft */}
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-base font-bold text-gray-900">Suggested order draft</h2>
+                      <p className="text-xs text-gray-500">Case-friendly quantities</p>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 text-[10px] font-semibold text-gray-400 uppercase">Item</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">On Hand</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">On Order</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Lead Time</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Case</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Order</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {AUTO_REPLENISHMENT[businessType].map((item, i) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer" onClick={() => { setItemDetailData({ name: item.item, onHand: item.onHand } as ItemDetailData); setIsItemDetailOpen(true); }}>
+                            <td className="py-2.5 text-xs text-modisoft-blue font-medium">{item.item}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.onHand}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.onOrder}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.leadTimeDays}d</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.caseSize}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.orderQty}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Counts to Check */}
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-base font-bold text-gray-900">Counts to check</h2>
+                      <p className="text-xs text-gray-500">Numbers look stale or suspicious</p>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 text-[10px] font-semibold text-gray-400 uppercase">Item</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">On Hand</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Suggested</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Last Count</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {CYCLE_COUNT_ITEMS.map((item, i) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50 cursor-pointer" onClick={() => { setItemDetailData({ name: item.item, onHand: item.onHand } as ItemDetailData); setIsItemDetailOpen(true); }}>
+                            <td className="py-2.5 text-xs text-modisoft-blue font-medium">{item.item}</td>
+                            <td className={`py-2.5 text-xs text-right font-medium ${item.onHand < 0 ? 'text-red-600' : 'text-gray-600'}`}>{item.onHand}</td>
+                            <td className={`py-2.5 text-xs text-right font-medium ${item.suggestedOnHand > item.onHand ? 'text-modisoft-turquoise' : 'text-orange-500'}`}>{item.suggestedOnHand}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{item.lastCount}</td>
+                            <td className="py-2.5 text-xs text-gray-500 text-right">{item.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Waste Ledger — restaurant only */}
+                {businessType === 'restaurant' && (
+                  <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-base font-bold text-gray-900">Waste Ledger (Last 5)</h2>
+                      <div className="flex items-center gap-2">
+                        <input type="text" placeholder="Item name" className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs w-24 focus:outline-none focus:ring-1 focus:ring-modisoft-turquoise" />
+                        <input type="text" placeholder="Qty" className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs w-12 focus:outline-none focus:ring-1 focus:ring-modisoft-turquoise" />
+                        <select className="px-2 py-1 bg-gray-50 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-modisoft-turquoise">
+                          <option>Expired</option><option>Spilled</option><option>Dropped</option><option>Overcooked</option>
+                        </select>
+                        <button onClick={() => showToast('Waste entry added to ledger')} className="bg-modisoft-green text-white px-3 py-1 rounded text-[10px] font-semibold active:scale-95">Add</button>
+                      </div>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-gray-100">
+                          <th className="text-left py-2 text-[10px] font-semibold text-gray-400 uppercase">When</th>
+                          <th className="text-left py-2 text-[10px] font-semibold text-gray-400 uppercase">Item</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Qty</th>
+                          <th className="text-right py-2 text-[10px] font-semibold text-gray-400 uppercase">Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {WASTE_LEDGER.map((entry, i) => (
+                          <tr key={i} className="border-b border-gray-50 hover:bg-gray-50/50">
+                            <td className="py-2.5 text-xs text-gray-600">{entry.when}</td>
+                            <td className="py-2.5 text-xs text-modisoft-blue font-medium">{entry.item}</td>
+                            <td className="py-2.5 text-xs text-gray-600 text-right">{entry.qty}</td>
+                            <td className="py-2.5 text-xs text-gray-500 text-right">{entry.reason}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* ===== BUSINESS-TYPE WIDGETS ===== */}
@@ -2178,7 +2677,8 @@ export default function DemandForecastingPage() {
             </>
           )}
 
-          {/* ===== LABOR VS DEMAND PLANNER (ALL BUSINESS TYPES) ===== */}
+          {/* ===== LABOR VS DEMAND PLANNER ===== */}
+          {showLabor && (
           <div className="mb-6 bg-gradient-to-br from-modisoft-turquoise/5 via-slate-50 to-modisoft-green/5 rounded-xl border border-modisoft-turquoise/15 p-5 shadow-sm">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -2367,6 +2867,7 @@ export default function DemandForecastingPage() {
               );
             })()}
           </div>
+          )}
 
           {/* ===== BOTTOM ROW: INSIGHTS + TABLE ===== */}
           <div className="grid grid-cols-4 gap-6">
@@ -2461,8 +2962,22 @@ export default function DemandForecastingPage() {
                             ? { label: 'Stock Up', color: 'bg-sky-50 text-sky-700 border-sky-200' }
                             : { label: 'Steady', color: 'bg-gray-50 text-gray-500 border-gray-200' };
                       return (
-                        <tr key={item.id} className={`hover:bg-gray-50/80 transition-colors ${isTop3 ? 'bg-modisoft-turquoise/[0.03]' : ''}`}>
-                          {/* Rank */}
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-gray-50/80 transition-colors cursor-pointer ${isTop3 ? 'bg-modisoft-turquoise/[0.03]' : ''}`}
+                          onClick={() => {
+                            setItemDetailData({
+                              name: item.name,
+                              department: item.department,
+                              onHand: Math.round(item.forecastUnits * 0.8),
+                              parLevel: Math.round(item.forecastUnits * 1.2),
+                              price: item.price,
+                              forecastUnits: item.forecastUnits,
+                              status: item.forecastUnits >= 250 ? 'low_stock' : 'covered',
+                            });
+                            setIsItemDetailOpen(true);
+                          }}
+                        >                          {/* Rank */}
                           <td className="pl-5 pr-2 py-2.5">
                             {isTop3 ? (
                               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-modisoft-turquoise text-white text-[10px] font-bold">
@@ -2475,7 +2990,7 @@ export default function DemandForecastingPage() {
                           {/* Item name + department */}
                           <td className="px-3 py-2.5">
                             <div className="flex flex-col">
-                              <span className={`text-sm font-semibold ${isTop3 ? 'text-gray-900' : 'text-gray-700'}`}>{item.name}</span>
+                              <span className={`text-sm font-semibold hover:underline ${isTop3 ? 'text-gray-900' : 'text-gray-700'}`}>{item.name}</span>
                               <span className="text-[10px] text-gray-400 font-medium">{item.department}</span>
                             </div>
                           </td>
@@ -2531,6 +3046,7 @@ export default function DemandForecastingPage() {
               </div>
             </div>
           </div>
+          </>)}
         </main>
       </div>
 
@@ -2663,10 +3179,22 @@ export default function DemandForecastingPage() {
                 </div>
               </div>
 
-              {/* Fuel Station Toggle (Convenience / Admin only) */}
-              {(businessType === 'convenience' || businessType === 'admin') && (
-                <div className="bg-white rounded-xl p-4 shadow-sm">
-                  <label className="text-sm font-semibold text-gray-700 mb-3 block">Data Views</label>
+              {/* Data Views Toggles */}
+              <div className="bg-white rounded-xl p-4 shadow-sm">
+                <label className="text-sm font-semibold text-gray-700 mb-3 block">Data Views</label>
+                <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={showLabor}
+                    onChange={(e) => setShowLabor(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-modisoft-turquoise focus:ring-modisoft-turquoise"
+                  />
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">👥</span>
+                    <span className="text-sm text-gray-700">Staffing Planner</span>
+                  </div>
+                </label>
+                {(businessType === 'convenience' || businessType === 'admin') && (
                   <label className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
                     <input
                       type="checkbox"
@@ -2679,8 +3207,8 @@ export default function DemandForecastingPage() {
                       <span className="text-sm text-gray-700">Fuel Station</span>
                     </div>
                   </label>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Date Range Picker */}
               <div className="bg-white rounded-xl p-4 shadow-sm">
@@ -2731,6 +3259,7 @@ export default function DemandForecastingPage() {
                   setSelectedStores(['all']);
                   setSelectedDepartments(['all']);
                   setShowFuel(false);
+                  setShowLabor(businessType !== 'convenience');
                   setStartDate('2026-09-10');
                   setEndDate('2026-09-20');
                 }}
@@ -2787,6 +3316,50 @@ export default function DemandForecastingPage() {
         onClose={() => setSubstituteCategory(null)}
         categoryData={substituteCategory}
       />
+
+      {/* ===== ITEM DETAIL MODAL ===== */}
+      <ItemDetailModal
+        isOpen={isItemDetailOpen}
+        onClose={() => { setIsItemDetailOpen(false); setItemDetailData(null); }}
+        item={itemDetailData}
+        onOrder={(item) => {
+          setIsItemDetailOpen(false);
+          setOrderCategory({ category: item.name, expected: item.forecastUnits || 50, stock: item.onHand });
+        }}
+        onShowToast={showToast}
+      />
+
+      {/* ===== PURCHASE ORDER BUILDER MODAL ===== */}
+      {isOrderBuilderOpen && (
+        <ItemOrderBuilder
+          items={currentItems}
+          initialOrders={orderBuilderInitial}
+          onClose={() => setIsOrderBuilderOpen(false)}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ===== COUNT WORKSHEET MODAL ===== */}
+      {isCountWorksheetOpen && (
+        <CountWorksheet
+          items={currentItems}
+          onClose={() => setIsCountWorksheetOpen(false)}
+          onCountsSubmitted={handleCountsSubmitted}
+          showToast={showToast}
+        />
+      )}
+
+      {/* ===== TOAST NOTIFICATION ===== */}
+      {toastMessage && (
+        <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[60] transition-all duration-300 ${toastVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+          <div className="bg-modisoft-blue text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3 text-sm font-medium">
+            <svg className="w-5 h-5 text-modisoft-green flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            {toastMessage}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

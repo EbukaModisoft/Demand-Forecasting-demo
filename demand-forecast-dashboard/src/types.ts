@@ -173,6 +173,107 @@ export const FUEL_GRADE_COLORS: Record<FuelGrade, string> = {
   diesel2: '#3478C6', // medium blue
 };
 
+// ============== INVENTORY OPTIMIZATION ==============
+export type InventoryCoverageStatus = 'covered' | 'low_stock' | 'used_up';
+export type InventoryRiskLevel = 'high' | 'medium' | 'low';
+export type SpoilageRisk = 'high' | 'medium' | 'low';
+
+export interface InventoryKpiData {
+  itemsAtRisk: number;
+  moneyInSlowMovers: number;
+  stockOutsPrevented: number;
+  dataHealthFixes: number;
+  inventoryHealthScore: number; // 0-100
+  wasteRisk?: number; // restaurant only - items that may spoil soon
+}
+
+export interface InventoryItem {
+  id: string;
+  name: string;
+  department: string;
+  onHand: number;
+  forecastNeed: number; // next 48h
+  price: number;
+  cost: number;
+  coverageStatus: InventoryCoverageStatus;
+  reorderPoint: number;
+  parLevel: number; // bring up to this level
+  lastCountDate: string;
+  daysOfSupply: number;
+  vendor?: string;
+  caseSize?: number;
+  upc?: string;
+}
+
+export interface FastMoverItem {
+  item: string;
+  department?: string;
+  category?: string;
+  expected6h: number;
+  onHand: number;
+  refillNow: number;
+  stockYouCanSell?: number;
+  hoursLeft?: number;
+  badge?: 'inventory_based' | 'pace_based';
+}
+
+export interface AutoReplenishmentItem {
+  item: string;
+  onHand: number;
+  onOrder: number;
+  leadTimeDays: number;
+  caseSize: number;
+  orderQty: number;
+}
+
+export interface CycleCountItem {
+  item: string;
+  onHand: number;
+  suggestedOnHand: number;
+  lastCount: string;
+  reason: 'Stale count' | 'Negative OH' | 'Variance';
+}
+
+export interface SlowMoverItem {
+  item: string;
+  onHand: number;
+  recentPace: string; // e.g. "2/d"
+  price: number;
+  suggestion: string; // e.g. "Promo 2-for", "Discount 30%"
+}
+
+export interface SpoilageItem {
+  item: string;
+  prepDate: string;
+  shelfLifeHrs: number;
+  stockYouCanSell: number;
+  hoursLeft: number;
+  risk: SpoilageRisk;
+}
+
+export interface PrepItem {
+  meal: 'breakfast' | 'lunch' | 'dinner';
+  item: string;
+  suggestedBatch: number;
+}
+
+export interface WasteLedgerEntry {
+  when: string;
+  item: string;
+  qty: number;
+  reason: 'Expired' | 'Spilled' | 'Dropped' | 'Smashed' | 'Overcooked';
+}
+
+export interface BundleSuggestion {
+  items: string;
+  placement: string;
+}
+
+export interface InventoryHealthAction {
+  label: string;
+  impact: string; // e.g. "+4 pts", "+5 pts"
+}
+
 // ============== NEW ITEM SIMULATOR ==============
 export interface NewItemInput {
   name: string;
