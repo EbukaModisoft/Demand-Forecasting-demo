@@ -30,6 +30,10 @@ import {
   CheckCircle,
   Sun,
   Heart,
+  Sparkles,
+  DollarSign,
+  ShieldCheck,
+  Leaf,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -57,6 +61,7 @@ import {
   WASTE_LEDGER,
   HEALTH_ACTIONS,
   AT_RISK_ITEMS,
+  WEEKLY_WINS,
 } from '../lib/inventoryData';
 import { buildActions, calculateConfidence, updateActionStatus, getActionStats } from '../lib/actionEngine';
 import { NewItemSimulator } from '../components/NewItemSimulator';
@@ -678,6 +683,7 @@ export default function DemandForecastingPage() {
   const [activeView, setActiveView] = useState<'today' | 'forecasting'>('today');
   const [stockSnapshotOpen, setStockSnapshotOpen] = useState(true);
   const [healthScoreOpen, setHealthScoreOpen] = useState(false);
+  const [savingsDetailOpen, setSavingsDetailOpen] = useState(false);
   const [businessType, setBusinessType] = useState<BusinessType>('convenience');
   const businessProfile = BUSINESS_PROFILES[businessType];
   const [startDate, setStartDate] = useState('2026-09-10');
@@ -741,6 +747,15 @@ export default function DemandForecastingPage() {
       ...prev,
       [businessType]: (prev[businessType] ?? INVENTORY_ITEMS[businessType]).map(item =>
         item.id === itemId ? { ...item, onHand: newOnHand, lastCountDate: new Date().toISOString().split('T')[0] } : item
+      ),
+    }));
+  };
+
+  const handleParUpdate = (itemId: string, newPar: number) => {
+    setInventoryItems(prev => ({
+      ...prev,
+      [businessType]: (prev[businessType] ?? INVENTORY_ITEMS[businessType]).map(item =>
+        item.id === itemId ? { ...item, parLevel: newPar } : item
       ),
     }));
   };
@@ -1420,7 +1435,7 @@ export default function DemandForecastingPage() {
           </div>
 
           {/* ===== KPI CARDS ROW ===== */}
-          <div className="grid grid-cols-6 gap-4 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
             <KpiCard 
               title="Expected Revenue"
               value={formatLargeNumber(kpiData.revenueForecast)}
@@ -1468,8 +1483,33 @@ export default function DemandForecastingPage() {
                     <div className={`${barColor} h-1.5 rounded-full transition-all`} style={{ width: `${score}%` }} />
                   </div>
                   <p className="text-[10px] text-gray-400 flex items-center gap-1">
-                    <Info className="w-3 h-3" />
-                    Tap for tips
+                    <Sparkles className="w-3 h-3 text-modisoft-turquoise" />
+                    <span className="text-modisoft-turquoise font-medium">AI: {HEALTH_ACTIONS.filter(a => a.aiSource).length} suggestions</span>
+                  </p>
+                </div>
+              );
+            })()}
+            {/* Forecasting Savings KPI Card */}
+            {(() => {
+              const wins = WEEKLY_WINS[businessType];
+              const totalSaved = wins.stockoutsSavedRevenue + wins.wasteSavedDollars + wins.overstockSaved;
+              return (
+                <div
+                  className="bg-white rounded-xl border border-gray-100/80 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] relative overflow-hidden cursor-pointer hover:shadow-md transition-all"
+                  onClick={() => setSavingsDetailOpen(!savingsDetailOpen)}
+                >
+                  <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-modisoft-green to-modisoft-turquoise" />
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-2xl font-bold text-modisoft-teal">${totalSaved.toLocaleString()}</span>
+                  </div>
+                  <p className="text-xs font-semibold text-gray-600 mb-1">Forecasting savings</p>
+                  <div className="flex items-center gap-1 mb-1.5">
+                    <TrendingUp className="w-3 h-3 text-emerald-500" />
+                    <span className="text-[10px] font-semibold text-emerald-600">+{wins.weekOverWeekChange}% vs last week</span>
+                  </div>
+                  <p className="text-[10px] text-gray-400 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-modisoft-turquoise" />
+                    <span className="text-modisoft-turquoise font-medium">{wins.wins.length} wins this week</span>
                   </p>
                 </div>
               );
@@ -1489,6 +1529,10 @@ export default function DemandForecastingPage() {
                   }`}>
                     Currently {INVENTORY_KPI[businessType].inventoryHealthScore}/100
                   </span>
+                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+                    <Sparkles className="w-3 h-3" />
+                    AI-powered
+                  </span>
                 </div>
                 <button onClick={() => setHealthScoreOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
                   <X className="w-4 h-4" />
@@ -1497,11 +1541,17 @@ export default function DemandForecastingPage() {
               <p className="text-xs text-gray-500 mb-4">Based on stock risk, slow-moving items, and count accuracy. Each action below adds points.</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {HEALTH_ACTIONS.map((action, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-modisoft-turquoise/5 transition-colors">
-                    <CheckCircle className="w-4 h-4 text-modisoft-turquoise flex-shrink-0 mt-0.5" />
-                    <div>
+                  <div key={i} className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${action.aiSource ? 'border-purple-200 bg-purple-50/30 hover:bg-purple-50/60' : 'border-gray-100 bg-gray-50/50 hover:bg-modisoft-turquoise/5'}`}>
+                    {action.aiSource ? (
+                      <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4 text-modisoft-turquoise flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
                       <p className="text-sm font-semibold text-modisoft-blue">{action.label}</p>
-                      <p className="text-xs text-modisoft-teal font-medium">{action.impact}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-modisoft-teal font-medium">{action.impact}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1522,6 +1572,104 @@ export default function DemandForecastingPage() {
               </div>
             </div>
           )}
+
+          {/* Forecasting Savings Detail Panel */}
+          {savingsDetailOpen && (() => {
+            const wins = WEEKLY_WINS[businessType];
+            const totalSaved = wins.stockoutsSavedRevenue + wins.wasteSavedDollars + wins.overstockSaved;
+            const bizLabel = businessType === 'admin' ? 'store' : businessType === 'convenience' ? 'convenience store' : businessType === 'grocery' ? 'grocery store' : businessType === 'liquor' ? 'liquor store' : 'restaurant';
+            return (
+              <div className="mb-4 bg-white rounded-xl border-2 border-modisoft-green/30 p-5 shadow-md animate-in slide-in-from-top-2">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="w-5 h-5 text-modisoft-teal" />
+                    <h3 className="font-bold text-gray-900 text-base">How forecasting helped this week</h3>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 text-[10px] font-bold border border-purple-200">
+                      <Sparkles className="w-3 h-3" /> AI-powered
+                    </span>
+                  </div>
+                  <button onClick={() => setSavingsDetailOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Headline profit impact */}
+                <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-modisoft-teal/5 to-modisoft-green/5 rounded-lg border border-modisoft-turquoise/20 mb-4">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-modisoft-turquoise to-modisoft-green shadow-sm">
+                    <DollarSign className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-extrabold text-modisoft-teal">${wins.profitImpact.toLocaleString()}</span>
+                      <span className="text-sm text-gray-500">estimated profit impact</span>
+                    </div>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <TrendingUp className="w-3 h-3 text-emerald-500" />
+                      <span className="text-xs font-semibold text-emerald-600">+{wins.weekOverWeekChange}% vs. last week</span>
+                      <span className="text-xs text-gray-400 ml-2">Updated every Monday &bull; {bizLabel}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3 metric cards */}
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  <div className="bg-blue-50/50 rounded-lg border border-blue-100 px-3 py-2.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShieldCheck className="w-4 h-4 text-blue-600" />
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase">Stockouts prevented</span>
+                    </div>
+                    <p className="text-xl font-extrabold text-gray-900">{wins.stockoutsPrevented} <span className="text-xs font-normal text-gray-400">items</span></p>
+                    <p className="text-[10px] text-blue-600 font-medium mt-0.5">~${wins.stockoutsSavedRevenue.toLocaleString()} in saved sales</p>
+                  </div>
+                  <div className="bg-emerald-50/50 rounded-lg border border-emerald-100 px-3 py-2.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Leaf className="w-4 h-4 text-emerald-600" />
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase">Waste avoided</span>
+                    </div>
+                    <p className="text-xl font-extrabold text-gray-900">{wins.wasteAvoided} <span className="text-xs font-normal text-gray-400">items</span></p>
+                    <p className="text-[10px] text-emerald-600 font-medium mt-0.5">~${wins.wasteSavedDollars.toLocaleString()} saved from spoilage</p>
+                  </div>
+                  <div className="bg-amber-50/50 rounded-lg border border-amber-100 px-3 py-2.5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Package className="w-4 h-4 text-amber-600" />
+                      <span className="text-[10px] font-semibold text-gray-500 uppercase">Smarter reorders</span>
+                    </div>
+                    <p className="text-xl font-extrabold text-gray-900">{wins.reorderOptimized} <span className="text-xs font-normal text-gray-400">adjusted</span></p>
+                    <p className="text-[10px] text-amber-600 font-medium mt-0.5">~${wins.overstockSaved.toLocaleString()} less in overstock</p>
+                  </div>
+                </div>
+
+                {/* Total saved bar */}
+                <div className="flex items-center justify-between px-3 py-2 bg-modisoft-teal/5 rounded-lg border border-modisoft-turquoise/10 mb-4">
+                  <span className="text-xs text-gray-600">Total money saved this week from forecasting:</span>
+                  <span className="text-sm font-extrabold text-modisoft-teal">${totalSaved.toLocaleString()}</span>
+                </div>
+
+                {/* Individual wins */}
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">What forecasting caught this week</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {wins.wins.map((win, idx) => (
+                      <div key={idx} className="flex items-start gap-2.5 p-3 rounded-lg border border-gray-100 bg-gray-50/50 hover:bg-modisoft-turquoise/5 transition-colors">
+                        <div className="flex items-center justify-center w-5 h-5 rounded-full bg-modisoft-turquoise/15 flex-shrink-0 mt-0.5">
+                          <span className="text-[9px] font-bold text-modisoft-teal">{idx + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-modisoft-blue">{win.label}</p>
+                          <p className="text-[10px] text-gray-500 mt-0.5 leading-relaxed">{win.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Disclaimer */}
+                <p className="mt-3 text-[10px] text-gray-400 text-center">
+                  Estimates based on your sales patterns, seasonal trends, and real-time inventory data. Actual impact may vary.
+                </p>
+              </div>
+            );
+          })()}
 
           {/* ===== SUNNY'S TIP + WEEK AT A GLANCE ===== */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-4">
@@ -1920,6 +2068,12 @@ export default function DemandForecastingPage() {
                                 <span className="text-[10px] text-gray-400">{item.department}</span>
                               </div>
                               <p className="text-xs text-gray-500 mt-0.5">{item.reason}</p>
+                              {item.aiInsight && (
+                                <p className="text-[11px] text-purple-600 mt-1 flex items-start gap-1">
+                                  <Sparkles className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                                  <span>{item.aiInsight}</span>
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-4 flex-shrink-0 ml-4">
@@ -1978,6 +2132,7 @@ export default function DemandForecastingPage() {
                     setIsItemDetailOpen(true);
                   }}
                   onCountUpdate={handleCountUpdate}
+                  onParUpdate={handleParUpdate}
                   onAddToOrder={handleAddToOrder}
                   showToast={showToast}
                 />

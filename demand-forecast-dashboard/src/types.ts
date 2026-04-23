@@ -203,6 +203,7 @@ export interface InventoryItem {
   vendor?: string;
   caseSize?: number;
   upc?: string;
+  mlAdjusted?: boolean;
 }
 
 export interface FastMoverItem {
@@ -272,6 +273,7 @@ export interface BundleSuggestion {
 export interface InventoryHealthAction {
   label: string;
   impact: string; // e.g. "+4 pts", "+5 pts"
+  aiSource?: boolean;
 }
 
 // ============== NEW ITEM SIMULATOR ==============
